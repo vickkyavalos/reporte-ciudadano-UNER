@@ -1,0 +1,1 @@
+//cada punto del mapa tenga su color representativo según su estado

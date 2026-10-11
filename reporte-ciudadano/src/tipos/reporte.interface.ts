@@ -9,7 +9,7 @@ export interface Coordenadas{
 
 export interface Foto {
  id: string;
- url: string; // o ruta local mientras no se subió
+ url: string; 
  momento:"problema" | "arreglo";
 }
 
