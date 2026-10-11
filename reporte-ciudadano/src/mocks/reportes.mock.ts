@@ -1,13 +1,13 @@
 import { Reporte, TipoDeReporte, Coordenadas } from "@/tipos/reporte.interface";
 
-export const MOCK_TIPOS_REPORTE: TipoDeReporte[] = [
+export const mock_tipos: TipoDeReporte[] = [
   { id: "tip-bache", nombre: "Bache", icono: "warning-outline", color: "#C1440E", areaResponsable: "Obras Públicas" },
   { id: "tip-luz", nombre: "Luminaria", icono: "bulb-outline", color: "#D97706", areaResponsable: "Electrotecnia" },
   { id: "tip-basura", nombre: "Basura", icono: "trash-outline", color: "#4B5563", areaResponsable: "Higiene Urbana" },
   { id: "tip-rama", nombre: "Rama / Árbol", icono: "leaf-outline", color: "#15803D", areaResponsable: "Espacios Verdes" },
 ];
 
-export const MOCK_REPORTES: Reporte[] = [
+export const mock_reportes: Reporte[] = [
   {
     id: "rep-00412",
     codigo: "GCHU-2026-00412",

@@ -3,12 +3,12 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    background: '#F3F4F6',         
-    surface: '#FFFFFF',            
-    text: '#111827',            
-    textSecondary: '#6B7280',   
-    primary: '#1F2937',             
-    border: '#E5E7EB',             
+    background: '#F3F4F6',
+    surface: '#FFFFFF',
+    text: '#111827',
+    textSecondary: '#6B7280',
+    primary: '#1F2937',
+    border: '#E5E7EB',
     backgroundElement: '#FFFFFF',
     backgroundSelected: '#E5E7EB',
     tint: '#1F2937',
@@ -29,11 +29,11 @@ export const Colors = {
 } as const;
 
 export const EstadosColors = {
-  recibido: '#9CA3AF',        
-  en_revision: '#D97706',      
-  asignado: '#3B82F6',         
-  resuelto: '#10B981',         
-  rechazado: '#EF4444',         
+  recibido: '#9CA3AF',
+  en_revision: '#D97706',
+  asignado: '#3B82F6',
+  resuelto: '#10B981',
+  rechazado: '#EF4444',
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light;
@@ -41,8 +41,8 @@ export type ThemeColor = keyof typeof Colors.light;
 export const Accessibility = {
   fontSizeBase: 16,
   fontSizeLarge: 18,
-  buttonMinHeight: 48,             
-  borderRadius: 8,                  
+  buttonMinHeight: 48,
+  borderRadius: 8,
 } as const;
 
 export const Fonts = Platform.select({
