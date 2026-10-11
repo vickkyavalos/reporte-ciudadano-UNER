@@ -1,6 +1,6 @@
 import { Zona } from "@/tipos/zona.interface";
 
-export const mock_cuadrilla: Cuadrilla[] = [
+export const mock_zonas: Zona[] = [
 
     { "id": "zon-norte", "nombre": "Zona Norte", "referente": "Corralón Norte",
         "limite": [ { "latitud": -32.99, "longitud": -58.53 },
