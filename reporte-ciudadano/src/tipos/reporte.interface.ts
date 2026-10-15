@@ -40,10 +40,3 @@ export interface Reporte{
     areaResponsable:string;
  }
 
- export interface CambioDeEstado {
- id: string;
- reporteId: string;
- estado: EstadoReporte;
- comentario: string | null;
- operadorId: string | null;
- }
