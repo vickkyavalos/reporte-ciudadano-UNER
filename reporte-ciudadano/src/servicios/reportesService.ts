@@ -22,7 +22,6 @@ async function simular() {
   }
 }
 
-
 let reportes: Reporte[] = [...REPORTES_MOCK];
 
 export async function obtenerTipos(): Promise<TipoDeReporte[]> {
