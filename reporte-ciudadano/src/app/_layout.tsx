@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
-
+import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { TemaProvider } from '@/providers/ThemeProvider';
 
 export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <TemaProvider>
       <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </TemaProvider>
   );
 }

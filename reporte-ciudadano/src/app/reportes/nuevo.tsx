@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import type { ComponentProps } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons as Icon } from '@expo/vector-icons';
+import Icon from '@react-native-vector-icons/ionicons';
 
 // Importamos usando las rutas de tu estructura real
 import type { PayloadCrearReporte, Coordenadas, TipoDeReporte } from '@/tipos/reporte.interface';
 import { crearReporte, obtenerTipos } from '@/servicios/reportesService';
+
+type NombreIcono = ComponentProps<typeof Icon>['name'];
 
 export default function NuevoReporteScreen() {
   const router = useRouter();
@@ -95,7 +98,7 @@ export default function NuevoReporteScreen() {
                 onPress={() => setTipoId(tipo.id)}
               >
                 <Icon 
-                  name={tipo.icono} 
+                  name={tipo.icono as NombreIcono} 
                   size={32} 
                   color={tipoId === tipo.id ? '#000' : '#8A92A6'} 
                 />
