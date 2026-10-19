@@ -4,6 +4,7 @@ import type { Coordenadas, Reporte } from "@/tipos/reporte.interface";
 import type { RespuestaLista } from "@/tipos/api-interface";
 import type { TipoDeReporte } from "@/tipos/reporte.interface";
 import { distanciaMetros } from "@/utils/formato";
+import type { PayloadCrearReporte } from "@/tipos/reporte.interface";
 
 export const MOCK_CONFIG = { simularErrorDeRed: false, demoraMs: 400 };
 
@@ -46,4 +47,34 @@ export async function sumarseAReporte(reporteId: string): Promise<Reporte> {
   const actualizado = { ...actual, adhesiones: actual.adhesiones + 1 };
   reportes = reportes.map((r) => (r.id === reporteId ? actualizado : r));
   return actualizado;
+}
+
+export async function crearReporte(payload: PayloadCrearReporte): Promise<Reporte> {
+  await simular(); 
+
+  const nuevoReporte: Reporte = {
+    id: Math.random().toString(36).substring(7),
+    codigo: `REP-${Math.floor(Math.random() * 10000)}`,
+    tipoId: payload.tipoId,
+    descripcion: payload.descripcion || null,
+    audioUrl: payload.audioUrl || null,
+    coordenadas: payload.coordenadas,
+    direccion: payload.direccion,
+    fotos: [
+      { id: `foto_${Date.now()}`, url: payload.fotoLocalUri, momento: 'problema' }
+    ],
+    zonaId: 'z_pendiente', 
+    estado: 'recibido',
+    autorId: 'usr_actual', 
+    cuadrillaId: null,
+    duplicadoDe: null,
+    adhesiones: 0,
+    creadoEn: new Date().toISOString(),
+    sincronizado: false, // Queda en false para programar la subida en segundo plano
+  };
+  
+  
+  reportes = [nuevoReporte, ...reportes];
+  
+  return nuevoReporte;
 }
