@@ -48,3 +48,47 @@ export async function sumarseAReporte(reporteId: string): Promise<Reporte> {
   reportes = reportes.map((r) => (r.id === reporteId ? actualizado : r));
   return actualizado;
 }
+
+// gabi mapea los reportes 
+
+ // Obtener los reportes del vecino
+export async function obtenerMisReportes(
+  autorId: string
+): Promise<RespuestaLista<Reporte>> {
+  await simular();
+
+  const datos = reportes
+    .filter((reporte) => reporte.autorId === autorId)
+    .sort(
+      (a, b) =>
+        new Date(b.creadoEn).getTime() -
+        new Date(a.creadoEn).getTime()
+    );
+
+  return {
+    datos,
+    meta: {
+      total: datos.length,
+      pagina: 1,
+      porPagina: 20,
+    },
+  };
+}
+
+// Obtener un reporte por su ID
+export async function obtenerReportePorId(
+  reporteId: string
+): Promise<Reporte> {
+  await simular();
+
+  const reporte = reportes.find((r) => r.id === reporteId);
+
+  if (!reporte) {
+    throw new ErrorServicio(
+      "REPORTE_NO_ENCONTRADO",
+      "No encontramos ese reporte."
+    );
+  }
+
+  return reporte;
+}
