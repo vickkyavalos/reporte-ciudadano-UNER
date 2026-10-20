@@ -1,30 +1,38 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
 import { iniciarSesion } from '@/servicios/authService';
 
 export default function LoginScreen() {
 	const [identifier, setIdentifier] = useState('');
 	const [password, setPassword] = useState('');
 	const [passwordVisible, setPasswordVisible] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [cargando, setCargando] = useState(false);
 	const router = useRouter();
 
 	const entrar = async () => {
-		await iniciarSesion(identifier, password);
-		router.replace('/');
+		if (cargando) return;
+		setError(null);
+		setCargando(true);
+		try {
+			await iniciarSesion(identifier, password);
+			router.replace('/');
+		} catch (e: any) {
+			setError(e?.mensaje ?? 'No pudimos iniciar sesión. Intente de nuevo.');
+		} finally {
+			setCargando(false);
+		}
 	};
 
 	return (
 		<View style={styles.screen}>
 			<View style={styles.card}>
 				<View style={styles.brandMark}>
-					<Text style={styles.shield}>◇</Text>
+					<Ionicons name="shield-outline" size={34} color="#536071" />
 				</View>
 				<Text style={styles.title}>Municipalidad</Text>
-				<View style={styles.badge}>
-					<Text style={styles.badgeIcon}>♙</Text>
-					<Text style={styles.badgeText}>Vista Senior Activa</Text>
-				</View>
 
 				<View style={styles.form}>
 					<Text style={styles.label}>DNI o Correo electrónico</Text>
@@ -32,7 +40,7 @@ export default function LoginScreen() {
 						accessibilityLabel="DNI o Correo electrónico"
 						autoCapitalize="none"
 						autoCorrect={false}
-						placeholder="Ej: 12.345.678-9"
+						placeholder="Ej: norma@mail.com"
 						placeholderTextColor="#747D8B"
 						style={styles.input}
 						value={identifier}
@@ -50,22 +58,42 @@ export default function LoginScreen() {
 							style={styles.passwordTextInput}
 							value={password}
 							onChangeText={setPassword}
+							onSubmitEditing={entrar}
 						/>
 						<Pressable
 							accessibilityLabel={passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
 							accessibilityRole="button"
-							hitSlop={10}
+							hitSlop={12}
 							onPress={() => setPasswordVisible(!passwordVisible)}
 						>
-							<Text style={styles.eye}>◎</Text>
+							<Ionicons
+								name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
+								size={26}
+								color="#182232"
+							/>
 						</Pressable>
 					</View>
 
-					<Pressable accessibilityRole="button" style={styles.primaryButton} onPress={entrar}>
-						<Text style={styles.primaryText}>Ingresar</Text>
+					{error && (
+						<Text accessibilityRole="alert" style={styles.error}>
+							{error}
+						</Text>
+					)}
+
+					<Pressable
+						accessibilityRole="button"
+						style={[styles.primaryButton, cargando && styles.disabled]}
+						onPress={entrar}
+						disabled={cargando}
+					>
+						{cargando ? (
+							<ActivityIndicator color="#FFFFFF" />
+						) : (
+							<Text style={styles.primaryText}>Ingresar</Text>
+						)}
 					</Pressable>
 					<Pressable accessibilityRole="button" style={styles.biometricButton}>
-						<Text style={styles.biometricIcon}>◉</Text>
+						<Ionicons name="finger-print-outline" size={24} color="#202A39" />
 						<Text style={styles.biometricText}>Acceso biométrico</Text>
 					</Pressable>
 					<Pressable accessibilityRole="button" style={styles.forgotButton}>
@@ -76,7 +104,7 @@ export default function LoginScreen() {
 
 			<View style={styles.footer}>
 				<Text style={styles.footerHint}>¿No tiene una cuenta?</Text>
-				<Pressable accessibilityRole="button">
+				<Pressable accessibilityRole="button" hitSlop={10}>
 					<Text style={styles.registerText}>Registrarse</Text>
 				</Pressable>
 			</View>
@@ -90,7 +118,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		paddingHorizontal: 20,
 		paddingTop: 34,
-		paddingBottom: 20,
+		paddingBottom: 60,
 		backgroundColor: '#F4F5F7',
 	},
 	card: {
@@ -100,7 +128,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingHorizontal: 23,
 		paddingTop: 23,
-		paddingBottom: 20,
+		paddingBottom: 24,
 		borderRadius: 8,
 		backgroundColor: '#FFFFFF',
 		shadowColor: '#182230',
@@ -110,76 +138,63 @@ const styles = StyleSheet.create({
 		elevation: 4,
 	},
 	brandMark: {
-		width: 56,
-		height: 56,
+		width: 64,
+		height: 64,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginBottom: 9,
-		borderRadius: 28,
+		marginBottom: 10,
+		borderRadius: 32,
 		backgroundColor: '#F1F2F4',
 	},
-	shield: { color: '#536071', fontSize: 31, lineHeight: 38 },
-	title: { color: '#192232', fontSize: 18, fontWeight: '700', lineHeight: 24 },
-	badge: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 5,
-		marginTop: 7,
-		paddingHorizontal: 9,
-		paddingVertical: 3,
-		borderRadius: 12,
-		backgroundColor: '#EDF4FF',
-	},
-	badgeIcon: { color: '#1760D2', fontSize: 12 },
-	badgeText: { color: '#175BC4', fontSize: 10, fontWeight: '500' },
-	form: { width: '100%', marginTop: 17 },
-	label: { marginBottom: 5, color: '#182232', fontSize: 11, fontWeight: '500' },
+	title: { color: '#192232', fontSize: 24, fontWeight: '700', lineHeight: 30 },
+	form: { width: '100%', marginTop: 20 },
+	label: { marginBottom: 6, color: '#182232', fontSize: 16, fontWeight: '600' },
 	input: {
-		height: 37,
-		paddingHorizontal: 10,
+		height: 52,
+		paddingHorizontal: 12,
 		borderWidth: 1.5,
 		borderColor: '#202A39',
-		borderRadius: 6,
+		borderRadius: 8,
 		color: '#192232',
-		fontSize: 14,
+		fontSize: 18,
 	},
-	passwordLabel: { marginTop: 12 },
+	passwordLabel: { marginTop: 16 },
 	passwordInput: {
-		height: 37,
+		height: 52,
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingLeft: 10,
-		paddingRight: 9,
+		paddingLeft: 12,
+		paddingRight: 12,
 		borderWidth: 1.5,
 		borderColor: '#202A39',
-		borderRadius: 6,
+		borderRadius: 8,
 	},
-	passwordTextInput: { flex: 1, height: '100%', padding: 0, color: '#192232', fontSize: 14 },
-	eye: { color: '#182232', fontSize: 19 },
+	passwordTextInput: { flex: 1, height: '100%', padding: 0, color: '#192232', fontSize: 18 },
+	error: { marginTop: 12, color: '#B42318', fontSize: 16, fontWeight: '500' },
 	primaryButton: {
-		height: 37,
+		height: 54,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginTop: 17,
-		borderRadius: 6,
+		marginTop: 20,
+		borderRadius: 8,
 		backgroundColor: '#202A39',
 	},
-	primaryText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+	disabled: { opacity: 0.6 },
+	primaryText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
 	biometricButton: {
-		height: 37,
+		height: 54,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
-		gap: 9,
-		marginTop: 11,
+		gap: 10,
+		marginTop: 12,
 		borderWidth: 1.5,
 		borderColor: '#202A39',
-		borderRadius: 6,
+		borderRadius: 8,
 	},
-	biometricIcon: { color: '#202A39', fontSize: 17 },
-	biometricText: { color: '#202A39', fontSize: 13, fontWeight: '700' },
-	forgotButton: { alignSelf: 'center', marginTop: 11, paddingVertical: 1 },
-	forgotText: { color: '#667085', fontSize: 12, textDecorationLine: 'underline' },
+	biometricText: { color: '#202A39', fontSize: 18, fontWeight: '700' },
+	forgotButton: { alignSelf: 'center', marginTop: 14, paddingVertical: 8 },
+	forgotText: { color: '#667085', fontSize: 16, textDecorationLine: 'underline' },
 	footer: {
 		position: 'absolute',
 		right: 20,
@@ -188,8 +203,8 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'center',
 		alignItems: 'center',
-		gap: 5,
+		gap: 6,
 	},
-	footerHint: { color: '#7B8493', fontSize: 12 },
-	registerText: { color: '#202A39', fontSize: 12, fontWeight: '700', textDecorationLine: 'underline' },
+	footerHint: { color: '#7B8493', fontSize: 16 },
+	registerText: { color: '#202A39', fontSize: 16, fontWeight: '700', textDecorationLine: 'underline' },
 });

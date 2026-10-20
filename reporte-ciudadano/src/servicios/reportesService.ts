@@ -4,6 +4,7 @@ import type { Coordenadas, Reporte } from "@/tipos/reporte.interface";
 import type { RespuestaLista } from "@/tipos/api-interface";
 import type { TipoDeReporte } from "@/tipos/reporte.interface";
 import { distanciaMetros } from "@/utils/formato";
+import type { PayloadCrearReporte } from "@/tipos/reporte.interface";
 
 export const MOCK_CONFIG = { simularErrorDeRed: false, demoraMs: 400 };
 
@@ -21,7 +22,6 @@ async function simular() {
     throw new ErrorServicio("SIN_CONEXION", "No pudimos conectarnos. Revisá tu señal e intentá de nuevo.");
   }
 }
-
 
 let reportes: Reporte[] = [...REPORTES_MOCK];
 

@@ -1,12 +1,12 @@
 import { Stack } from 'expo-router';
-
+import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { TemaProvider } from '@/providers/ThemeProvider';
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="reportes" />
-    </Stack>
+    <TemaProvider>
+      <AnimatedSplashOverlay />
+      <Stack screenOptions={{ headerShown: false }} />
+    </TemaProvider>
   );
 }

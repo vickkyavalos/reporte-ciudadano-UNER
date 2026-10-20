@@ -40,3 +40,7 @@ export interface Reporte{
     areaResponsable:string;
  }
 
+// Tipo auxiliar para lo que envía la app móvil al crear
+export type PayloadCrearReporte = Pick<Reporte, 'tipoId' | 'descripcion' | 'audioUrl' | 'coordenadas' | 'direccion'> & {
+    fotoLocalUri: string; // La URI temporal del dispositivo antes de subirla
+};
