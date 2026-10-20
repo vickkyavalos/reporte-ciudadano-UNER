@@ -103,15 +103,29 @@ export default function MisReportes() {
           renderItem={({ item }) => (
             <TarjetaMiReporte
               reporte={item}
-              tipo={tipos.find((t) => t.id === item.tipoId)}
-              onPress={() =>
-                router.push({
-                  pathname: "/reportes/[id]",
-                  params: { id: item.id },
-                })
-              }
-            />
-          )}
+              titulo={`${
+                tipos.find((t) => t.id === item.tipoId)?.nombre ?? "Reporte"
+              } en ${item.direccion}`}
+                fecha={new Date(item.creadoEn).toLocaleDateString("es-AR", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  timeZone: "America/Argentina/Buenos_Aires",
+                })}
+                fotoUrl={
+                  item.fotos.find((foto) => foto.momento === "problema")?.url ??
+                  item.fotos[0]?.url ??
+                  null
+                }
+                onPress={() =>
+                  router.push({
+                    pathname: "/reportes/[id]",
+                    params: { id: item.id },
+                  })
+                }
+              />
+            )}
+          
         />
       )}
     </View>
