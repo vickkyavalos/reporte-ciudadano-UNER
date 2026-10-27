@@ -92,3 +92,35 @@ export async function obtenerReportePorId(
 
   return reporte;
 }
+
+export async function crearReporte(payload: PayloadCrearReporte): Promise<Reporte> {
+  await simular(); 
+
+  const nuevoReporte: Reporte = {
+    id: Math.random().toString(36).substring(7),
+    codigo: `REP-${Math.floor(Math.random() * 10000)}`,
+    tipoId: payload.tipoId,
+    descripcion: payload.descripcion || null,
+    audioUrl: payload.audioUrl || null,
+    coordenadas: payload.coordenadas,
+    direccion: payload.direccion,
+    // 👇 Iteramos sobre el arreglo de fotosUris para crear el objeto que pide la interfaz
+    fotos: payload.fotosUris.map((uri, index) => ({
+      id: `foto_${Date.now()}_${index}`,
+      url: uri,
+      momento: 'problema'
+    })),
+    zonaId: 'z_pendiente', 
+    estado: 'recibido',
+    autorId: 'usr_actual', 
+    cuadrillaId: null,
+    duplicadoDe: null,
+    adhesiones: 0,
+    creadoEn: new Date().toISOString(),
+    sincronizado: false, 
+  };
+  
+  reportes = [nuevoReporte, ...reportes];
+  
+  return nuevoReporte;
+}
