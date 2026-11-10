@@ -1,3 +1,5 @@
+import type { CambioDeEstado } from "@/tipos/cambioDeEstado";
+
 export type EstadoReporte =  | "recibido" | "en_revision" | "asignado" | "resuelto" | "rechazado";
 
 export interface Coordenadas {
@@ -28,6 +30,16 @@ export interface Reporte {
     adhesiones: number;
     creadoEn: string;
     sincronizado: boolean;
+    historial: CambioDeEstado[];
+    comentarioCierre: string | null;
+}
+
+export interface CambiosOperadorReporte {
+    estado: EstadoReporte;
+    cuadrillaId: string | null;
+    comentario: string;
+    fotoArreglo: string | null;
+    duplicadoDe: string | null;
 }
 
 export interface TipoDeReporte {
