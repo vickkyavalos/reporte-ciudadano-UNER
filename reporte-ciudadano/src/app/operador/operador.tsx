@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -8,13 +8,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ESTADOS } from "@/constants/estados";
-import {
-  actualizarEstadoReclamoOperador,
-  obtenerReclamosOperador,
-} from "@/servicios/operadorService";
+import { obtenerReclamosOperador } from "@/servicios/operadorService";
+import { buscarDetalleOperadorPorQr } from "@/servicios/detalleOperadorService";
 import type {
   CampoFiltroOperador,
   FiltroEstadoOperador,
@@ -60,6 +59,7 @@ const formatoFecha = (fecha: string) =>
 export default function OperadorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [reclamos, setReclamos] = useState<ReclamoOperador[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,9 +69,9 @@ export default function OperadorScreen() {
   const [orden, setOrden] = useState<OrdenBandejaOperador>("recientes");
   const [pagina, setPagina] = useState(0);
   const [campoAbierto, setCampoAbierto] = useState<CampoFiltroOperador | null>(null);
-  const [reclamoSeleccionado, setReclamoSeleccionado] = useState<ReclamoOperador | null>(null);
-  const [actualizandoEstado, setActualizandoEstado] = useState(false);
-  const [errorEstado, setErrorEstado] = useState<string | null>(null);
+  const [escanerAbierto, setEscanerAbierto] = useState(false);
+  const [errorQr, setErrorQr] = useState<string | null>(null);
+  const qrEnProceso = useRef(false);
 
   const cargarReclamos = useCallback(async () => {
     setCargando(true);
@@ -85,9 +85,28 @@ export default function OperadorScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void Promise.resolve().then(cargarReclamos);
-  }, [cargarReclamos]);
+  useFocusEffect(
+    useCallback(() => {
+      void Promise.resolve().then(cargarReclamos);
+    }, [cargarReclamos])
+  );
+
+  const abrirDetallePorQr = useCallback(async (valor: string) => {
+    if (qrEnProceso.current) return;
+    qrEnProceso.current = true;
+    setErrorQr(null);
+    try {
+      const reclamo = await buscarDetalleOperadorPorQr(valor);
+      setEscanerAbierto(false);
+      router.push({
+        pathname: "/operador/detalle_operador",
+        params: { id: reclamo.id },
+      });
+    } catch (cause) {
+      setErrorQr(cause instanceof Error ? cause.message : "No se pudo leer el reclamo del QR.");
+      qrEnProceso.current = false;
+    }
+  }, [router]);
 
   const tipos = useMemo(
     () => [...new Set(reclamos.map((reclamo) => reclamo.tipo))].sort((a, b) => a.localeCompare(b, "es")),
@@ -154,33 +173,16 @@ export default function OperadorScreen() {
     setCampoAbierto(null);
   };
 
-  const cambiarEstado = async (estado: EstadoReporte) => {
-    if (!reclamoSeleccionado) return;
-    setActualizandoEstado(true);
-    setErrorEstado(null);
-    try {
-      const actualizado = await actualizarEstadoReclamoOperador(reclamoSeleccionado.id, estado);
-      setReclamos((actuales) =>
-        actuales.map((reclamo) => (reclamo.id === actualizado.id ? actualizado : reclamo))
-      );
-      setReclamoSeleccionado(actualizado);
-    } catch (cause) {
-      setErrorEstado(cause instanceof Error ? cause.message : "No se pudo actualizar el estado.");
-    } finally {
-      setActualizandoEstado(false);
-    }
-  };
-
   const renderReclamo = (item: ReclamoOperador) => {
     const estado = colorEstado(item.estado);
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${item.tipo} en ${item.direccion}. Estado: ${etiquetaEstado(item.estado)}. Ver detalle`}
-        onPress={() => {
-          setErrorEstado(null);
-          setReclamoSeleccionado(item);
-        }}
+        onPress={() => router.push({
+          pathname: "/operador/detalle_operador",
+          params: { id: item.id },
+        })}
         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       >
         <View style={styles.rowContent}>
@@ -206,14 +208,28 @@ export default function OperadorScreen() {
     <View style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>Bandeja del operador</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Perfil del operador"
-          onPress={() => router.push("/login")}
-          style={styles.profileButton}
-        >
-          <Text style={styles.profileIcon}>•</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Escanear QR de un reclamo"
+            onPress={() => {
+              qrEnProceso.current = false;
+              setErrorQr(null);
+              setEscanerAbierto(true);
+            }}
+            style={styles.scanButton}
+          >
+            <Text style={styles.scanText}>⌗ QR</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Perfil del operador"
+            onPress={() => router.push("/login")}
+            style={styles.profileButton}
+          >
+            <Text style={styles.profileIcon}>•</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.filters}>
@@ -333,59 +349,50 @@ export default function OperadorScreen() {
       <Modal
         animationType="slide"
         transparent
-        visible={reclamoSeleccionado !== null}
-        onRequestClose={() => setReclamoSeleccionado(null)}
+        visible={escanerAbierto}
+        onRequestClose={() => setEscanerAbierto(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setReclamoSeleccionado(null)}>
-          {reclamoSeleccionado && (
-            <Pressable style={styles.detailCard} onPress={(event) => event.stopPropagation()}>
-              <View style={styles.detailHandle} />
-              <View style={styles.detailHeading}>
-                <Text style={styles.detailTitle}>Detalle del reclamo</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Cerrar detalle"
-                  onPress={() => setReclamoSeleccionado(null)}
-                >
-                  <Text style={styles.closeButton}>×</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.detailCode}>{reclamoSeleccionado.codigo}</Text>
-              <Text style={styles.detailIssue}>
-                {reclamoSeleccionado.tipo} • {reclamoSeleccionado.direccion}
-              </Text>
-              <Text style={styles.detailMeta}>
-                {reclamoSeleccionado.zona} • {formatoFecha(reclamoSeleccionado.creadoEn)}
-              </Text>
-              <Text style={styles.description}>{reclamoSeleccionado.descripcion}</Text>
-              <Text style={styles.sectionLabel}>ESTADO DEL RECLAMO</Text>
-              <View style={styles.statusOptions}>
-                {(["recibido", "en_revision", "asignado", "resuelto", "rechazado"] as const).map((estado) => {
-                  const selected = reclamoSeleccionado.estado === estado;
-                  const color = colorEstado(estado);
-                  return (
-                    <Pressable
-                      key={estado}
-                      accessibilityRole="button"
-                      disabled={selected || actualizandoEstado}
-                      onPress={() => void cambiarEstado(estado)}
-                      style={[
-                        styles.statusOption,
-                        { backgroundColor: selected ? color.fondo : "#FFFFFF", borderColor: color.borde },
-                      ]}
-                    >
-                      <Text style={[styles.statusOptionText, { color: color.texto }]}>
-                        {etiquetaEstado(estado)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {actualizandoEstado && <ActivityIndicator color="#1A202C" style={styles.statusLoading} />}
-              {errorEstado && <Text style={styles.errorText}>{errorEstado}</Text>}
+        <View style={styles.scannerScreen}>
+          <View style={[styles.scannerHeader, { paddingTop: insets.top + 8 }]}>
+            <Text style={styles.headerTitle}>Escanear QR del reclamo</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar escáner"
+              onPress={() => setEscanerAbierto(false)}
+            >
+              <Text style={styles.closeButton}>×</Text>
             </Pressable>
+          </View>
+          {cameraPermission?.granted ? (
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+              onBarcodeScanned={({ data }) => void abrirDetallePorQr(data)}
+            />
+          ) : (
+            <View style={styles.cameraPermission}>
+              <Text style={styles.permissionText}>
+                Necesitamos acceso a la cámara para leer el QR del reclamo.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void requestCameraPermission()}
+                style={styles.retryButton}
+              >
+                <Text style={styles.retryText}>Permitir cámara</Text>
+              </Pressable>
+            </View>
           )}
-        </Pressable>
+          {errorQr && (
+            <View style={styles.qrError}>
+              <Text style={styles.errorText}>{errorQr}</Text>
+              <Pressable onPress={() => setErrorQr(null)} style={styles.retryButton}>
+                <Text style={styles.retryText}>Volver a escanear</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </Modal>
     </View>
   );
@@ -405,6 +412,12 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E7EB",
   },
   headerTitle: { fontSize: 16, fontWeight: "700", color: "#172033" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  scanButton: {
+    height: 32, justifyContent: "center", paddingHorizontal: 10, borderRadius: 7,
+    backgroundColor: "#202A39",
+  },
+  scanText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
   profileButton: {
     width: 32, height: 32, alignItems: "center", justifyContent: "center",
     borderRadius: 16, backgroundColor: "#F2F3F5", borderWidth: 1, borderColor: "#E5E7EB",
@@ -480,21 +493,14 @@ const styles = StyleSheet.create({
   },
   optionText: { color: "#344054", fontSize: 14 },
   optionCheck: { color: "#1570EF", fontSize: 16, fontWeight: "700" },
-  detailCard: {
-    marginTop: "auto", marginHorizontal: -20, paddingHorizontal: 20, paddingTop: 12,
-    paddingBottom: 28, borderTopLeftRadius: 18, borderTopRightRadius: 18, backgroundColor: "#FFFFFF",
-  },
-  detailHandle: { width: 38, height: 4, alignSelf: "center", marginBottom: 14, borderRadius: 2, backgroundColor: "#D0D5DD" },
-  detailHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  detailTitle: { color: "#172033", fontSize: 17, fontWeight: "700" },
   closeButton: { paddingHorizontal: 4, color: "#667085", fontSize: 27, lineHeight: 29 },
-  detailCode: { marginTop: 10, color: "#667085", fontSize: 11 },
-  detailIssue: { marginTop: 5, color: "#202A39", fontSize: 15, fontWeight: "700" },
-  detailMeta: { marginTop: 5, color: "#798394", fontSize: 12 },
-  description: { marginTop: 14, color: "#475467", fontSize: 13, lineHeight: 19 },
-  sectionLabel: { marginTop: 20, marginBottom: 9, color: "#667085", fontSize: 10, fontWeight: "700" },
-  statusOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  statusOption: { paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderRadius: 16 },
-  statusOptionText: { fontSize: 11, fontWeight: "600" },
-  statusLoading: { marginTop: 12 },
+  scannerScreen: { flex: 1, backgroundColor: "#FFFFFF" },
+  scannerHeader: {
+    minHeight: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: "#E5E7EB",
+  },
+  camera: { flex: 1 },
+  cameraPermission: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28 },
+  permissionText: { marginBottom: 16, color: "#475467", textAlign: "center", fontSize: 14 },
+  qrError: { padding: 16, backgroundColor: "#FFFFFF" },
 });
