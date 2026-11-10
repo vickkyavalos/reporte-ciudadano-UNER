@@ -31,3 +31,18 @@ export function obtenerUsuario(): Usuario | null {
 export function obtenerRol() {
   return usuarioActual?.rol ?? null;
 }
+
+export async function actualizarPreferenciaAvisos(avisosActivos: boolean): Promise<Usuario> {
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  if (!usuarioActual) {
+    throw new Error("Iniciá sesión para cambiar la preferencia de avisos.");
+  }
+
+  const usuarioMock = mock_usuario.find((usuario) => usuario.id === usuarioActual?.id);
+  if (!usuarioMock) {
+    throw new Error("No se encontró el usuario actual.");
+  }
+  usuarioMock.avisosActivos = avisosActivos;
+  usuarioActual = { ...usuarioActual, avisosActivos };
+  return { ...usuarioActual };
+}
