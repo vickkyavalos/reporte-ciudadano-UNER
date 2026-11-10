@@ -49,9 +49,6 @@ export async function sumarseAReporte(reporteId: string): Promise<Reporte> {
   return actualizado;
 }
 
-// gabi mapea los reportes 
-
- // Obtener los reportes del vecino
 export async function obtenerMisReportes(
   autorId: string
 ): Promise<RespuestaLista<Reporte>> {
@@ -75,7 +72,6 @@ export async function obtenerMisReportes(
   };
 }
 
-// Obtener un reporte por su ID
 export async function obtenerReportePorId(
   reporteId: string
 ): Promise<Reporte> {
@@ -104,7 +100,6 @@ export async function crearReporte(payload: PayloadCrearReporte): Promise<Report
     audioUrl: payload.audioUrl || null,
     coordenadas: payload.coordenadas,
     direccion: payload.direccion,
-    // 👇 Iteramos sobre el arreglo de fotosUris para crear el objeto que pide la interfaz
     fotos: payload.fotosUris.map((uri, index) => ({
       id: `foto_${Date.now()}_${index}`,
       url: uri,

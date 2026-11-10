@@ -1,6 +1,3 @@
-
-
-
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { haySesion } from "@/servicios/authService";
@@ -35,7 +32,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="operador"
         options={{
-          href: null, // Esto oculta la pestaña de la barra de navegación inferior
+          href: null, 
         }}
       />
     </Tabs>

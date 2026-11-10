@@ -12,13 +12,14 @@ import { useUbicacion } from "@/hooks/use-ubicacion";
 import { obtenerReportesCercanos, obtenerTipos, sumarseAReporte } from "@/servicios/reportesService";
 import type { Reporte } from "@/tipos/reporte.interface";
 import type { TipoDeReporte } from "@/tipos/reporte.interface";
-
+import { useAuth } from "@/providers/AuthProvider";
 type Carga = "cargando" | "ok" | "error";
 
 export default function ReportesCercanos() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { ubicacion } = useUbicacion();
+  const { salir } = useAuth();
 
   const [reportes, setReportes] = useState<Reporte[]>([]);
   const [tipos, setTipos] = useState<TipoDeReporte[]>([]);

@@ -1,12 +1,32 @@
 import { Stack } from 'expo-router';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { TemaProvider } from '@/providers/ThemeProvider';
+
+function Rutas() {
+  const { usuario, cargando } = useAuth();
+
+  if (cargando) return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!usuario}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!usuario}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
     <TemaProvider>
-      <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }} />
+      <AuthProvider>
+        <AnimatedSplashOverlay />
+        <Rutas />
+      </AuthProvider>
     </TemaProvider>
   );
 }
