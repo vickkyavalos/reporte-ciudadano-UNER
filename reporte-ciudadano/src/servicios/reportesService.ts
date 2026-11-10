@@ -146,10 +146,6 @@ export async function obtenerMisReportes(
   return { datos, meta: { total: datos.length, pagina: 1, porPagina: 20 } };
 }
 
-<<<<<<< HEAD
-export async function obtenerReportePorId(
-  reporteId: string
-=======
 export async function obtenerReportePorId(reporteId: string): Promise<Reporte> {
   await simular();
   const reporte = reportes.find((actual) => actual.id === reporteId);
@@ -176,7 +172,6 @@ export async function obtenerReporteOperadorPorId(reporteId: string): Promise<Re
 export async function actualizarReporteOperador(
   reporteId: string,
   cambios: CambiosOperadorReporte
->>>>>>> cf41495588297ed0f72432ea5c58d1037ea1b78e
 ): Promise<Reporte> {
   await simular();
   const actual = reportes.find((reporte) => reporte.id === reporteId);
