@@ -9,7 +9,7 @@ import { ReporteItem } from "@/components/reportes/reporte-item";
 import { PanelInferior } from "@/components/ui/barra-inicio";
 import { COLORES } from "@/constants/estados";
 import { useUbicacion } from "@/hooks/use-ubicacion";
-import { obtenerReportesCercanos, obtenerTipos, sumarseAReporte } from "@/servicios/reportesService";
+import { obtenerReportesCercanos, obtenerTipos, sumarseAReporte } from "@/servicios/reportes";
 import type { Reporte } from "@/tipos/reporte.interface";
 import type { TipoDeReporte } from "@/tipos/reporte.interface";
 import { useAuth } from "@/providers/AuthProvider";

@@ -10,7 +10,7 @@ import {
   AudioModule
 } from 'expo-audio';// Importamos el reproductor
 import type { PayloadCrearReporte, Coordenadas, TipoDeReporte } from '@/tipos/reporte.interface';
-import { crearReporte, obtenerTipos } from '@/servicios/reportesService';
+import { crearReporte, obtenerTipos } from '@/servicios/reportes';
 
 type NombreIcono = ComponentProps<typeof Icon>['name'];
 
