@@ -32,15 +32,12 @@ export default function TabsLayout() {
         }}
       />
 
-<<<<<<< HEAD
       <Tabs.Screen
         name="operador"
         options={{
           href: null, 
         }}
       />
-=======
->>>>>>> cf41495588297ed0f72432ea5c58d1037ea1b78e
     </Tabs>
   );
 }
