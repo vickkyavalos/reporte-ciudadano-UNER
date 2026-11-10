@@ -1,10 +1,13 @@
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { haySesion } from "@/servicios/authService";
+import { haySesion, obtenerRol } from "@/servicios/authService";
 
 export default function TabsLayout() {
   if (!haySesion()) {
     return <Redirect href="/login" />;
+  }
+  if (obtenerRol() === "operador") {
+    return <Redirect href="/operador/operador" />;
   }
 
   return (
@@ -29,12 +32,15 @@ export default function TabsLayout() {
         }}
       />
 
+<<<<<<< HEAD
       <Tabs.Screen
         name="operador"
         options={{
           href: null, 
         }}
       />
+=======
+>>>>>>> cf41495588297ed0f72432ea5c58d1037ea1b78e
     </Tabs>
   );
 }

@@ -10,13 +10,13 @@ StyleSheet,
 Text,
 View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import Ionicons from "@react-native-vector-icons/ionicons";
 
 import {
 obtenerReportePorId,
 obtenerTipos,
-} from "@/servicios/reportesService";
+} from "@/servicios/reportes";
 import type {
 Reporte,
 TipoDeReporte,
@@ -25,8 +25,6 @@ import { EstadoBadge } from "@/components/ui/text-estado";
 
 export default function DetalleReporte() {
 const { id } = useLocalSearchParams<{ id: string }>();
-const router = useRouter();
-
 const [reporte, setReporte] = useState<Reporte | null>(null);
 const [tipos, setTipos] = useState<TipoDeReporte[]>([]);
 const [cargando, setCargando] = useState(true);
@@ -65,8 +63,12 @@ async function cargarDetalle() {
 if (id) {
   cargarDetalle();
 } else {
-  setError("No se recibió el identificador del reclamo.");
-  setCargando(false);
+  void Promise.resolve().then(() => {
+    if (activo) {
+      setError("No se recibió el identificador del reclamo.");
+      setCargando(false);
+    }
+  });
 }
 
 return () => {
@@ -79,6 +81,7 @@ const tipo = tipos.find((item) => item.id === reporte?.tipoId);
 const foto =
 reporte?.fotos.find((item) => item.momento === "problema") ??
 reporte?.fotos[0];
+const fotoArreglo = reporte?.fotos.find((item) => item.momento === "arreglo");
 
 return (
 <View style={styles.pantalla}>
@@ -109,6 +112,18 @@ return (
       <View style={styles.estado}>
         <EstadoBadge estado={reporte.estado} />
       </View>
+
+      {(reporte.estado === "resuelto" || reporte.estado === "rechazado") && (
+        <View style={styles.cierre}>
+          <Text style={styles.etiqueta}>Cierre del reclamo</Text>
+          {fotoArreglo?.url && (
+            <Image source={{ uri: fotoArreglo.url }} style={styles.foto} />
+          )}
+          <Text style={styles.texto}>
+            {reporte.comentarioCierre?.trim() || "Sin comentario de cierre."}
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.etiqueta}>Descripción</Text>
       <Text style={styles.texto}>
@@ -193,6 +208,11 @@ marginBottom: 12,
 estado: {
 alignSelf: "flex-start",
 marginBottom: 18,
+},
+cierre: {
+padding: 14,
+borderRadius: 12,
+backgroundColor: "#FFFFFF",
 },
 etiqueta: {
 fontSize: 15,

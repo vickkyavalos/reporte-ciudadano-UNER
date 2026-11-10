@@ -17,8 +17,8 @@ export default function LoginScreen() {
 		setError(null);
 		setCargando(true);
 		try {
-			await iniciarSesion(identifier, password);
-			router.replace('/');
+			const usuario = await iniciarSesion(identifier, password);
+			router.replace(usuario.rol === 'operador' ? '/operador/operador' : '/');
 		} catch (e: any) {
 			setError(e?.mensaje ?? 'No pudimos iniciar sesión. Intente de nuevo.');
 		} finally {
