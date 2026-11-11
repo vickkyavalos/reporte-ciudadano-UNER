@@ -1,22 +1,44 @@
+import * as Network from "expo-network";
+import { asignarZona } from "@/hooks/geo";
 import { obtenerUsuario } from "@/servicios/authService";
+import { abrirArchivoLocal, borrarArchivoLocal } from "@/servicios/archivosLocales";
 import {
   registrarAvisoDeAdhesion,
   registrarAvisoDeEstado,
 } from "@/servicios/avisosService";
+import { ErrorApi, pedir } from "@/servicios/clienteService";
+import {
+  actualizarEntrada,
+  encolar,
+  listarCola,
+  obtenerDeCola,
+  quitarDeCola,
+  type EntradaCola,
+} from "@/servicios/colaReportes";
+import { direccionDePunto } from "@/servicios/ubicacionService";
 import { DETALLES_OPERADOR_MOCK } from "@/mocks/detalleOperador.mock";
 import { REPORTES_MOCK } from "@/mocks/reportes.mock";
 import { TIPOS_MOCK } from "@/mocks/tipos-reportes.mock";
+import { mock_zonas } from "@/mocks/zona.mock";
 import type { RespuestaLista } from "@/tipos/api-interface";
 import type {
   CambiosOperadorReporte,
   Coordenadas,
+  Foto,
   PayloadCrearReporte,
   Reporte,
   TipoDeReporte,
 } from "@/tipos/reporte.interface";
-import { distanciaMetros } from "@/utils/formato";
+import type { Zona } from "@/tipos/zona.interface";
+import { ahoraIsoArgentina, distanciaMetros, generarId } from "@/utils/formato";
 
 export const MOCK_CONFIG = { simularErrorDeRed: false, demoraMs: 400 };
+
+const USAR_API = Boolean(process.env.EXPO_PUBLIC_API_URL);
+const ESPERA_ENVIO_MS = 8000;
+const TIMEOUT_ARCHIVO_MS = 60000;
+const TIMEOUT_REPORTE_MS = 30000;
+let correlativoMock = 500;
 
 export class ErrorServicio extends Error {
   constructor(public codigo: string, mensaje: string) {
@@ -139,8 +161,10 @@ export async function obtenerMisReportes(
   autorId: string
 ): Promise<RespuestaLista<Reporte>> {
   await simular();
-  const datos = reportes
-    .filter((reporte) => reporte.autorId === autorId)
+  const pendientes = (await listarCola(autorId))
+    .map((entrada) => entrada.reporte)
+    .filter((pendiente) => !reportes.some((reporte) => reporte.id === pendiente.id));
+  const datos = [...pendientes, ...reportes.filter((reporte) => reporte.autorId === autorId)]
     .sort((a, b) => new Date(b.creadoEn).getTime() - new Date(a.creadoEn).getTime())
     .map(reporteVisibleParaVecino);
   return { datos, meta: { total: datos.length, pagina: 1, porPagina: 20 } };
@@ -148,7 +172,8 @@ export async function obtenerMisReportes(
 
 export async function obtenerReportePorId(reporteId: string): Promise<Reporte> {
   await simular();
-  const reporte = reportes.find((actual) => actual.id === reporteId);
+  const reporte =
+    reportes.find((actual) => actual.id === reporteId) ?? (await obtenerDeCola(reporteId))?.reporte;
   if (!reporte) {
     throw new ErrorServicio("REPORTE_NO_ENCONTRADO", "No encontramos ese reporte.");
   }
@@ -254,33 +279,167 @@ export async function actualizarReporteOperador(
   return copiaReporte(actualizado);
 }
 
-export async function crearReporte(payload: PayloadCrearReporte): Promise<Reporte> {
+export async function obtenerZonas(): Promise<Zona[]> {
+  return mock_zonas.map((zona) => ({ ...zona, limite: [...zona.limite] }));
+}
+
+async function subirArchivo(uriLocal: string): Promise<string> {
+  if (!USAR_API) {
+    await simular();
+    return uriLocal;
+  }
+  const formData = new FormData();
+  formData.append("archivo", abrirArchivoLocal(uriLocal));
+  const { datos } = await pedir<{ url: string }>("/archivos", {
+    metodo: "POST",
+    formData,
+    timeoutMs: TIMEOUT_ARCHIVO_MS,
+  });
+  return datos.url;
+}
+
+async function publicarReporte(reporte: Reporte): Promise<Reporte> {
+  if (USAR_API) {
+    const { datos } = await pedir<Omit<Reporte, "historial" | "comentarioCierre">>("/reportes", {
+      metodo: "POST",
+      cuerpo: {
+        id: reporte.id,
+        tipoId: reporte.tipoId,
+        descripcion: reporte.descripcion,
+        audioUrl: reporte.audioUrl,
+        fotos: reporte.fotos.map(({ id, url }) => ({ id, url })),
+        coordenadas: reporte.coordenadas,
+        direccion: reporte.direccion,
+        creadoEn: reporte.creadoEn,
+      },
+      timeoutMs: TIMEOUT_REPORTE_MS,
+    });
+    return { ...datos, historial: reporte.historial, comentarioCierre: null };
+  }
+
   await simular();
-  const creadoEn = new Date().toISOString();
-  const nuevoReporte: Reporte = {
-    id: Math.random().toString(36).substring(7),
-    codigo: `REP-${Math.floor(Math.random() * 10000)}`,
+  const yaPublicado = reportes.find((actual) => actual.id === reporte.id);
+  if (yaPublicado) return yaPublicado;
+  correlativoMock += 1;
+  return {
+    ...reporte,
+    codigo: `GCHU-${reporte.creadoEn.slice(0, 4)}-${String(correlativoMock).padStart(5, "0")}`,
+    sincronizado: true,
+  };
+}
+
+async function subirEntrada(entrada: EntradaCola): Promise<void> {
+  const { reporte } = entrada;
+  const archivosSubidos = { ...entrada.archivosSubidos };
+
+  const urlDe = async (uriLocal: string): Promise<string> => {
+    if (!archivosSubidos[uriLocal]) {
+      archivosSubidos[uriLocal] = await subirArchivo(uriLocal);
+      await actualizarEntrada({ ...entrada, archivosSubidos });
+    }
+    return archivosSubidos[uriLocal];
+  };
+
+  const fotos: Foto[] = [];
+  for (const foto of reporte.fotos) {
+    fotos.push({ ...foto, url: await urlDe(foto.url) });
+  }
+  const audioUrl = reporte.audioUrl ? await urlDe(reporte.audioUrl) : null;
+  const direccion = entrada.direccionPendiente
+    ? (await direccionDePunto(reporte.coordenadas)) ?? reporte.direccion
+    : reporte.direccion;
+
+  const publicado = await publicarReporte({ ...reporte, fotos, audioUrl, direccion });
+  reportes = [publicado, ...reportes.filter((actual) => actual.id !== publicado.id)];
+  await quitarDeCola(reporte.id);
+
+  for (const [uriLocal, url] of Object.entries(archivosSubidos)) {
+    if (uriLocal !== url) borrarArchivoLocal(uriLocal);
+  }
+}
+
+const esFaltaDeConexion = (error: unknown) =>
+  error instanceof ErrorServicio
+    ? error.codigo === "SIN_CONEXION"
+    : error instanceof ErrorApi && (error.estado === 0 || error.estado >= 500);
+
+async function procesarCola(): Promise<void> {
+  const usuario = obtenerUsuario();
+  if (!usuario) return;
+  const red = await Network.getNetworkStateAsync();
+  if (red.isConnected === false) return;
+
+  for (const entrada of await listarCola(usuario.id)) {
+    try {
+      await subirEntrada(entrada);
+    } catch (error) {
+      const actual = await obtenerDeCola(entrada.reporte.id);
+      if (actual) {
+        const ultimoError = error instanceof Error ? error.message : "No se pudo subir el reporte.";
+        await actualizarEntrada({ ...actual, ultimoError });
+      }
+      if (esFaltaDeConexion(error)) return;
+    }
+  }
+}
+
+let sincronizando: Promise<void> | null = null;
+let otraVuelta = false;
+
+// Una sola sincronización a la vez: dos en paralelo subirían dos veces los mismos archivos.
+export function sincronizarCola(): Promise<void> {
+  if (sincronizando) {
+    otraVuelta = true;
+    return sincronizando;
+  }
+  sincronizando = (async () => {
+    try {
+      do {
+        otraVuelta = false;
+        await procesarCola();
+      } while (otraVuelta);
+    } finally {
+      sincronizando = null;
+    }
+  })();
+  return sincronizando;
+}
+
+// Primero se guarda en el teléfono y recién después se intenta subir: así el
+// reporte no se pierde aunque la señal se corte en medio del envío.
+export async function crearReporte(payload: PayloadCrearReporte): Promise<Reporte> {
+  const usuario = obtenerUsuario();
+  if (!usuario) throw new ErrorServicio("NO_AUTENTICADO", "Iniciá sesión para enviar el reporte.");
+  if (payload.fotosUris.length === 0) {
+    throw new ErrorServicio("FOTO_REQUERIDA", "El reporte necesita al menos una foto.");
+  }
+  const zonaId = asignarZona(payload.coordenadas, await obtenerZonas(), 0);
+  if (!zonaId) {
+    throw new ErrorServicio("FUERA_DE_LA_CIUDAD", "Ese punto queda fuera de Gualeguaychú. Corregilo en el mapa.");
+  }
+
+  const id = generarId("rep");
+  const creadoEn = ahoraIsoArgentina();
+  const reporte: Reporte = {
+    id,
+    codigo: `LOCAL-${id.slice(-6).toUpperCase()}`,
     tipoId: payload.tipoId,
-    descripcion: payload.descripcion || null,
-    audioUrl: payload.audioUrl || null,
+    descripcion: payload.descripcion,
+    audioUrl: payload.audioUrl,
     coordenadas: payload.coordenadas,
     direccion: payload.direccion,
-    fotos: payload.fotosUris.map((uri, index) => ({
-      id: `foto_${Date.now()}_${index}`,
-      url: uri,
-      momento: "problema",
-    })),
-    zonaId: "z_pendiente",
+    fotos: payload.fotosUris.map((url) => ({ id: generarId("fot"), url, momento: "problema" })),
+    zonaId,
     estado: "recibido",
-    autorId: obtenerUsuario()?.id ?? "usr_actual",
+    autorId: usuario.id,
     cuadrillaId: null,
     duplicadoDe: null,
     adhesiones: 0,
     creadoEn,
     sincronizado: false,
     historial: [{
-      id: `cambio-${Date.now()}`,
-      reporteId: "",
+      id: generarId("cam"),
+      reporteId: id,
       estado: "recibido",
       comentario: null,
       operadorId: null,
@@ -288,7 +447,20 @@ export async function crearReporte(payload: PayloadCrearReporte): Promise<Report
     }],
     comentarioCierre: null,
   };
-  nuevoReporte.historial[0].reporteId = nuevoReporte.id;
-  reportes = [nuevoReporte, ...reportes];
-  return reporteVisibleParaVecino(nuevoReporte);
+
+  await encolar({
+    reporte,
+    direccionPendiente: payload.direccionPendiente,
+    archivosSubidos: {},
+    ultimoError: null,
+  });
+
+  // Si la señal es mala no se hace esperar al vecino: la subida sigue sola.
+  await Promise.race([
+    sincronizarCola().catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, ESPERA_ENVIO_MS)),
+  ]);
+
+  const publicado = reportes.find((actual) => actual.id === id);
+  return copiaReporte(publicado ?? reporte);
 }
