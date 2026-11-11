@@ -1,33 +1,31 @@
-import { Redirect, Tabs } from "expo-router";
-import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { haySesion, obtenerRol } from "@/servicios/authService";
+import { Tabs } from 'expo-router';
+import Ionicons from '@react-native-vector-icons/ionicons';
+
+import { Redirect } from 'expo-router';
+import { useAuth } from '@/providers/AuthProvider';
+
 
 export default function TabsLayout() {
-  if (!haySesion()) {
-    return <Redirect href="/login" />;
-  }
-  if (obtenerRol() === "operador") {
-    return <Redirect href="/operador/operador" />;
-  }
 
+  const { usuario } = useAuth();
+    if (usuario?.rol === 'operador') return <Redirect href="/operador/operador" />;
   return (
     <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: "Inicio",
+          title: 'Inicio',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="map-outline" size={size} color={color} />
+            <Ionicons name="home-outline" color={color} size={size} />
           ),
         }}
       />
-
       <Tabs.Screen
         name="mis-reportes"
         options={{
-          title: "Mis Reportes",
+          title: 'Mis reportes',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
+            <Ionicons name="list-outline" color={color} size={size} />
           ),
         }}
       />

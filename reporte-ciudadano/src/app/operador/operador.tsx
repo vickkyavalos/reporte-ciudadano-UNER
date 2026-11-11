@@ -12,6 +12,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ESTADOS } from "@/constants/estados";
+import { useAuth } from "@/providers/AuthProvider";
 import { obtenerReclamosOperador } from "@/servicios/operadorService";
 import { buscarDetalleOperadorPorQr } from "@/servicios/detalleOperadorService";
 import type {
@@ -58,6 +59,7 @@ const formatoFecha = (fecha: string) =>
 
 export default function OperadorScreen() {
   const router = useRouter();
+  const { salir } = useAuth();
   const insets = useSafeAreaInsets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [reclamos, setReclamos] = useState<ReclamoOperador[]>([]);
@@ -223,8 +225,8 @@ export default function OperadorScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Perfil del operador"
-            onPress={() => router.push("/login")}
+            accessibilityLabel="Cerrar sesión"
+            onPress={salir}
             style={styles.profileButton}
           >
             <Text style={styles.profileIcon}>•</Text>

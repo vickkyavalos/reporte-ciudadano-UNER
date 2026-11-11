@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
-import { iniciarSesion } from '@/servicios/authService';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function LoginScreen() {
 	const [identifier, setIdentifier] = useState('');
@@ -10,15 +9,14 @@ export default function LoginScreen() {
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [cargando, setCargando] = useState(false);
-	const router = useRouter();
+	const { ingresar } = useAuth();
 
 	const entrar = async () => {
 		if (cargando) return;
 		setError(null);
 		setCargando(true);
 		try {
-			const usuario = await iniciarSesion(identifier, password);
-			router.replace(usuario.rol === 'operador' ? '/operador/operador' : '/');
+			await ingresar(identifier, password);
 		} catch (e: any) {
 			setError(e?.mensaje ?? 'No pudimos iniciar sesión. Intente de nuevo.');
 		} finally {
