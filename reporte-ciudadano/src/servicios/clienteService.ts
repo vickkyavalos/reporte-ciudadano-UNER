@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL;
@@ -15,9 +16,28 @@ export const onSesionExpirada = (fn: () => void) => {
   alExpirarSesion = fn;
 };
 
-export const guardarToken = (t: string) => SecureStore.setItemAsync('token', t);
-export const obtenerToken = () => SecureStore.getItemAsync('token');
-export const borrarToken = () => SecureStore.deleteItemAsync('token');
+export const guardarToken = async (t: string) => {
+  if (Platform.OS === 'web') {
+    localStorage.setItem('token', t);
+    return;
+  }
+  await SecureStore.setItemAsync('token', t);
+};
+
+export const obtenerToken = async (): Promise<string | null> => {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem('token');
+  }
+  return SecureStore.getItemAsync('token');
+};
+
+export const borrarToken = async () => {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem('token');
+    return;
+  }
+  await SecureStore.deleteItemAsync('token');
+};
 
 type Opciones = { metodo?: string; cuerpo?: unknown; formData?: FormData };
 
