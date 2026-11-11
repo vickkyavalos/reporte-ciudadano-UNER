@@ -35,7 +35,35 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Usamos el micrófono para que puedas contar el problema con una nota de voz."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Usamos la cámara para sacarle una foto al problema que querés reportar.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Usamos tu ubicación para marcar dónde está el problema."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Usamos tus fotos para adjuntar una imagen del problema.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
