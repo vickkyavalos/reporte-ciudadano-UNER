@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~57.0.23",
     "@react-native-vector-icons/ionicons": "^13.1.4",
+    "axios": "^1.21.1",
     "expo": "~57.0.24",
     "expo-audio": "~57.0.5",
     "expo-camera": "~57.0.6",
