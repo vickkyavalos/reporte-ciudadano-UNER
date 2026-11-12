@@ -6,6 +6,7 @@ import type { Usuario } from '../tipos/usuario.interface';
 type Ctx = {
   usuario: Usuario | null;
   cargando: boolean;
+  esOperador: boolean;
   ingresar: (email: string, contrasena: string) => Promise<void>;
   salir: () => Promise<void>;
 };
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         usuario,
         cargando,
+        esOperador: usuario?.rol === 'operador',
         ingresar: async (email, contrasena) => {
           setUsuario(await auth.iniciarSesion(email, contrasena));
         },

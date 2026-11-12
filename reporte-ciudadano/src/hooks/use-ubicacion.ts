@@ -6,21 +6,38 @@ export const CENTRO_CIUDAD: Coordenadas = { latitud: -33.0095, longitud: -58.514
 
 interface OpcionesUbicacion {
   precision?: Location.Accuracy;
+  // Si viene, se pide también una posición más rápida para mostrar mientras llega la precisa.
+  precisionInicial?: Location.Accuracy;
   edadMaximaMs?: number;
   esperaMs?: number;
 }
 
 export function useUbicacion({
   precision = Location.Accuracy.Balanced,
+  precisionInicial,
   edadMaximaMs,
   esperaMs = 10000,
 }: OpcionesUbicacion = {}) {
   const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
+  const [precisa, setPrecisa] = useState(false);
   const [permitido, setPermitido] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let activo = true;
+    let llegoLaPrecisa = false;
+
+    const guardar = ({ coords }: Location.LocationObject) => {
+      setUbicacion({ latitud: coords.latitude, longitud: coords.longitude });
+    };
+    const pedirPosicion = (accuracy: Location.Accuracy) =>
+      Promise.race([
+        Location.getCurrentPositionAsync({ accuracy }),
+        new Promise<never>((_, rechazar) =>
+          setTimeout(() => rechazar(new Error("Timeout esperando el GPS")), esperaMs),
+        ),
+      ]);
+
     (async () => {
       try {
         const servicios = await Location.hasServicesEnabledAsync();
@@ -38,18 +55,22 @@ export function useUbicacion({
 
         const ultima = await Location.getLastKnownPositionAsync({ maxAge: edadMaximaMs });
         console.log("[ubicacion] última conocida:", ultima?.coords);
-        if (activo && ultima) {
-          setUbicacion({ latitud: ultima.coords.latitude, longitud: ultima.coords.longitude });
+        if (activo && ultima) guardar(ultima);
+
+        if (precisionInicial !== undefined) {
+          pedirPosicion(precisionInicial)
+            .then((posicion) => {
+              if (activo && !llegoLaPrecisa) guardar(posicion);
+            })
+            .catch(() => undefined);
         }
-        const actual = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: precision }),
-          new Promise<never>((_, rechazar) =>
-            setTimeout(() => rechazar(new Error("Timeout esperando el GPS")), esperaMs),
-          ),
-        ]);
+
+        const actual = await pedirPosicion(precision);
         console.log("[ubicacion] actual:", actual.coords);
+        llegoLaPrecisa = true;
         if (activo) {
-          setUbicacion({ latitud: actual.coords.latitude, longitud: actual.coords.longitude });
+          guardar(actual);
+          setPrecisa(true);
         }
       } catch (e) {
         console.log("[ubicacion] ERROR:", e);
@@ -59,7 +80,7 @@ export function useUbicacion({
     return () => {
       activo = false;
     };
-  }, [precision, edadMaximaMs, esperaMs]);
+  }, [precision, precisionInicial, edadMaximaMs, esperaMs]);
 
-  return { ubicacion: ubicacion ?? CENTRO_CIUDAD, encontrada: ubicacion !== null, permitido, error };
+  return { ubicacion: ubicacion ?? CENTRO_CIUDAD, encontrada: ubicacion !== null, precisa, permitido, error };
 }

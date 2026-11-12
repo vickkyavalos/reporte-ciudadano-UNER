@@ -1,25 +1,26 @@
-// import { Redirect, Stack } from "expo-router";
-// import { haySesion, obtenerRol } from "@/servicios/authService";
+// import { Stack, Redirect } from 'expo-router';
+// import { useAuth } from '@/providers/AuthProvider';
 
 // export default function OperadorLayout() {
-//   if (!haySesion()) {
-//     return <Redirect href="/login" />;
-//   }
-//   if (obtenerRol() !== "operador") {
-//     return <Redirect href="/" />;
-//   }
+//   const { usuario } = useAuth();
+
+//   if (usuario?.rol !== 'operador') return <Redirect href="/" />;
 
 //   return <Stack screenOptions={{ headerShown: false }} />;
 // }
-import { Redirect, Stack } from 'expo-router';
+
+import { Stack, Redirect } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
+import { BloqueoHuella } from '@/components/operador/bloqueo-huella'
 
 export default function OperadorLayout() {
   const { usuario } = useAuth();
 
-  if (usuario?.rol !== 'operador') {
-    return <Redirect href="/" />;
-  }
+  if (usuario?.rol !== 'operador') return <Redirect href="/" />;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <BloqueoHuella>
+      <Stack screenOptions={{ headerShown: false }} />
+    </BloqueoHuella>
+  );
 }

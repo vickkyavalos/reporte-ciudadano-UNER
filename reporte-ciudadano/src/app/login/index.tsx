@@ -1,15 +1,28 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+	View,
+	Text,
+	TextInput,
+	Pressable,
+	StyleSheet,
+	ActivityIndicator,
+	Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useAuth } from '@/providers/AuthProvider';
+import { huellaDisponible, pedirHuella } from '@/servicios/huellaService';
+import { obtenerSesion } from '@/servicios/authService';
 
 export default function LoginScreen() {
+	const router = useRouter();
+	const { ingresar } = useAuth(); 
+
 	const [identifier, setIdentifier] = useState('');
 	const [password, setPassword] = useState('');
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [cargando, setCargando] = useState(false);
-	const { ingresar } = useAuth();
 
 	const entrar = async () => {
 		if (cargando) return;
@@ -22,6 +35,27 @@ export default function LoginScreen() {
 		} finally {
 			setCargando(false);
 		}
+	};
+
+	const entrarConHuella = async () => {
+		if (cargando) return;
+
+		if (!(await huellaDisponible())) {
+			Alert.alert('Huella no disponible', 'Este celular no tiene una huella configurada.');
+			return;
+		}
+
+		const ok = await pedirHuella();
+		if (!ok) return;
+
+		const usuario = await obtenerSesion();
+		if (!usuario) {
+			Alert.alert('Ingresá con tu cuenta', 'Primero iniciá sesión con tu correo y contraseña.');
+			return;
+		}
+
+		
+		router.replace('/');
 	};
 
 	return (
@@ -90,7 +124,11 @@ export default function LoginScreen() {
 							<Text style={styles.primaryText}>Ingresar</Text>
 						)}
 					</Pressable>
-					<Pressable accessibilityRole="button" style={styles.biometricButton}>
+					<Pressable
+						accessibilityRole="button"
+						style={styles.biometricButton}
+						onPress={() => void entrarConHuella()}
+					>
 						<Ionicons name="finger-print-outline" size={24} color="#202A39" />
 						<Text style={styles.biometricText}>Acceso biométrico</Text>
 					</Pressable>

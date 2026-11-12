@@ -79,8 +79,9 @@ export default function NuevoReporteScreen() {
   const [guardando, setGuardando] = useState(false);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
 
-  const { ubicacion, encontrada, permitido, error: errorGps } = useUbicacion({
+  const { ubicacion, encontrada, precisa, permitido, error: errorGps } = useUbicacion({
     precision: Location.Accuracy.High,
+    precisionInicial: Location.Accuracy.Balanced,
     edadMaximaMs: 60000,
     esperaMs: 15000,
   });
@@ -330,6 +331,9 @@ export default function NuevoReporteScreen() {
           {punto && <VistaPunto punto={punto} />}
           <Text style={styles.donde}>{textoDonde}</Text>
           {distancia !== null && <Text style={styles.ayuda}>A {distancia} m de vos</Text>}
+          {punto && !puntoManual && !precisa && (
+            <Text style={styles.ayuda}>Ubicación aproximada. Si no coincide, corregila en el mapa.</Text>
+          )}
           {fueraDeLaCiudad && (
             <Text style={styles.aviso}>Ese punto queda fuera de Gualeguaychú. Corregilo en el mapa.</Text>
           )}

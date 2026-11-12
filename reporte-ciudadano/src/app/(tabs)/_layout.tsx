@@ -1,14 +1,19 @@
 import { Tabs, Redirect } from 'expo-router';
 import Ionicons from '@react-native-vector-icons/ionicons';
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 1f4af659bdda021878d4f85c69ade9f06ded0622
 import { useAuth } from '@/providers/AuthProvider';
 
-
 export default function TabsLayout() {
-
   const { usuario } = useAuth();
-    if (usuario?.rol === 'operador') return <Redirect href="/operador/operador" />;
+
+  if (!usuario) return <Redirect href="/login" />;
+
+  if (usuario.rol === 'operador') return <Redirect href="/operador/detalle_operador" />;
+
   return (
     <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen
