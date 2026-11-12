@@ -5,7 +5,9 @@ import { useAuth } from '@/providers/AuthProvider';
 export default function TabsLayout() {
   const { usuario } = useAuth();
 
-  if (usuario?.rol === 'operador') return <Redirect href="/operador/operador" />;
+  if (!usuario) return <Redirect href="/login" />;
+
+  if (usuario.rol === 'operador') return <Redirect href="/operador/detalle_operador" />;
 
   return (
     <Tabs screenOptions={{ headerShown: false }}>
