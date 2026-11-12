@@ -29,7 +29,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-<<<<<<< HEAD
 
       <Tabs.Screen
         name="operador"
@@ -37,8 +36,6 @@ export default function TabsLayout() {
           href: null, 
         }}
       />
-=======
->>>>>>> 69d3e449f3539ea5f05f63a8ca8375b357452470
     </Tabs>
   );
 }
