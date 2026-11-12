@@ -85,8 +85,8 @@ export default function ReportesCercanos() {
         <Pressable
           style={styles.perfil}
           accessibilityRole="button"
-          accessibilityLabel="Mi perfil"
-          onPress={() => router.push("/login" as Href)}
+          accessibilityLabel="Cerrar sesión"
+          onPress={salir}
         >
           <Ionicons name="person-outline" size={22} color={COLORES.texto} />
         </Pressable>

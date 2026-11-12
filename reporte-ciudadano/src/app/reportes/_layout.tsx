@@ -7,6 +7,7 @@ export default function ReportesLayout() {
 
   return (
     <Stack>
+      <Stack.Screen name="nuevo" options={{ title: "Nuevo reporte" }} />
       <Stack.Screen
         name="[id]"
         options={{

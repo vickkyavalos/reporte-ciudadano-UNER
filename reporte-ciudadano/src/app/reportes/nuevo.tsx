@@ -1,336 +1,488 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { ComponentProps } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Pressable, Alert, ActivityIndicator, Image } from 'react-native';
-import { useRouter } from 'expo-router';
-import Icon from '@react-native-vector-icons/ionicons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { 
-  useAudioRecorder, 
-  useAudioPlayer, 
-  AudioModule
-} from 'expo-audio';// Importamos el reproductor
-import type { PayloadCrearReporte, Coordenadas, TipoDeReporte } from '@/tipos/reporte.interface';
-import { crearReporte, obtenerTipos } from '@/servicios/reportes';
+import { useEffect, useState } from "react";
+import type { ComponentProps } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useRouter } from "expo-router";
+import Icon from "@react-native-vector-icons/ionicons";
+import { useCameraPermissions } from "expo-camera";
+import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { useNetworkState } from "expo-network";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type NombreIcono = ComponentProps<typeof Icon>['name'];
+import { SelectorPunto, VistaPunto } from "@/components/map/selector-punto";
+import { CamaraReporte } from "@/components/reportes/camara-reporte";
+import { ConfirmacionReporte } from "@/components/reportes/confirmacion-reporte";
+import { NotaDeVoz } from "@/components/reportes/nota-de-voz";
+import { COLORES } from "@/constants/estados";
+import { asignarZona } from "@/hooks/geo";
+import { CENTRO_CIUDAD, useUbicacion } from "@/hooks/use-ubicacion";
+import {
+  borrarArchivoLocal,
+  guardarArchivoLocal,
+  LIMITE_FOTO_BYTES,
+  tamanoArchivoLocal,
+} from "@/servicios/archivosLocales";
+import { obtenerUsuario } from "@/servicios/authService";
+import { borrarBorrador, cargarBorrador, guardarBorrador } from "@/servicios/borradorService";
+import { crearReporte, obtenerTipos, obtenerZonas } from "@/servicios/reportes";
+import { direccionDePunto, textoPuntoSinDireccion } from "@/servicios/ubicacionService";
+import type { Coordenadas, Reporte, TipoDeReporte } from "@/tipos/reporte.interface";
+import type { Zona } from "@/tipos/zona.interface";
+import { distanciaMetros } from "@/utils/formato";
+
+type NombreIcono = ComponentProps<typeof Icon>["name"];
+
+const MAX_FOTOS = 2;
+const MAX_DESCRIPCION = 1000;
+const EXTENSIONES_FOTO: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 export default function NuevoReporteScreen() {
   const router = useRouter();
-  
-  const [tiposReporte, setTiposReporte] = useState<TipoDeReporte[]>([]);
+  const margenes = useSafeAreaInsets();
+  const red = useNetworkState();
+  const autorId = obtenerUsuario()?.id ?? null;
+
+  const [tipos, setTipos] = useState<TipoDeReporte[]>([]);
+  const [zonas, setZonas] = useState<Zona[]>([]);
   const [cargandoTipos, setCargandoTipos] = useState(true);
+  const [errorTipos, setErrorTipos] = useState(false);
 
-  const [tipoId, setTipoId] = useState<string>('');
-  const [coordenadas, setCoordenadas] = useState<Coordenadas>({ latitud: -32.484, longitud: -58.232 }); 
-  const [direccion, setDireccion] = useState<string>('Rocamora 1240 - a 12 m de vos');
-  const [descripcion, setDescripcion] = useState<string>('');
-  
-  const [isOffline, setIsOffline] = useState(true);
-  const [guardando, setGuardando] = useState(false);
-
-  // === FOTOS ===
+  const [tipoId, setTipoId] = useState<string | null>(null);
   const [fotosUris, setFotosUris] = useState<string[]>([]);
-  const [mostrarCamara, setMostrarCamara] = useState(false);
-  const [permisoCamara, pedirPermisoCamara] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
-
-  // === AUDIO (Grabación y Reproducción) ===
-  const audioRecorder = useAudioRecorder({
-    extension: '.m4a',
-    sampleRate: 44100,
-    numberOfChannels: 2,
-    bitRate: 128000,
-    android: {
-      outputFormat: 'mpeg4',
-      audioEncoder: 'aac',
-    },
-    ios: {
-      audioQuality: 'max',
-    },
-    web: {
-      mimeType: 'audio/webm',
-      bitsPerSecond: 128000,
-    },
-  });
+  const [descripcion, setDescripcion] = useState("");
   const [audioUri, setAudioUri] = useState<string | null>(null);
-  const audioPlayer = useAudioPlayer(audioUri); // Inicializamos el reproductor con la URI generada
+  const [grabandoAudio, setGrabandoAudio] = useState(false);
+  const [puntoManual, setPuntoManual] = useState<Coordenadas | null>(null);
+  const [borradorListo, setBorradorListo] = useState(false);
+
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const [mapaAbierto, setMapaAbierto] = useState(false);
+  const [permisoCamara, pedirPermisoCamara] = useCameraPermissions();
+  const [guardando, setGuardando] = useState(false);
+  const [enviado, setEnviado] = useState<Reporte | null>(null);
+
+  const { ubicacion, encontrada, permitido, error: errorGps } = useUbicacion({
+    precision: Location.Accuracy.High,
+    edadMaximaMs: 60000,
+    esperaMs: 15000,
+  });
+  const punto = puntoManual ?? (encontrada ? ubicacion : null);
+  const clavePunto = punto ? `${punto.latitud},${punto.longitud}` : null;
+  const [direccionHallada, setDireccionHallada] = useState<{ clave: string; texto: string | null } | null>(null);
+  const direccion = direccionHallada?.clave === clavePunto ? direccionHallada?.texto ?? null : null;
+  const fueraDeLaCiudad = punto !== null && zonas.length > 0 && asignarZona(punto, zonas, 0) === null;
+
+  const cargarCatalogos = async () => {
+    setCargandoTipos(true);
+    setErrorTipos(false);
+    try {
+      const [listaTipos, listaZonas] = await Promise.all([obtenerTipos(), obtenerZonas()]);
+      setTipos(listaTipos);
+      setZonas(listaZonas);
+    } catch {
+      setErrorTipos(true);
+    } finally {
+      setCargandoTipos(false);
+    }
+  };
 
   useEffect(() => {
-    async function cargarCategorias() {
-      try {
-        const tipos = await obtenerTipos();
-        setTiposReporte(tipos);
-        if (tipos.length > 0) {
-          setTipoId(tipos[0].id);
-        }
-      } catch (error) {
-        Alert.alert('Error', 'No se pudieron cargar las categorías.');
-      } finally {
-        setCargandoTipos(false);
-      }
-    }
-    cargarCategorias();
+    void Promise.resolve().then(cargarCatalogos);
   }, []);
 
-  const handleAbrirCamara = async () => {
-    if (!permisoCamara?.granted) {
-      const result = await pedirPermisoCamara();
-      if (!result.granted) {
-        Alert.alert('Permiso denegado', 'Necesitamos acceso a la cámara para tomar la foto.');
-        return;
-      }
-    }
-    setMostrarCamara(true);
+  useEffect(() => {
+    if (!autorId) return;
+    cargarBorrador(autorId)
+      .then((borrador) => {
+        if (!borrador) return;
+        setTipoId(borrador.tipoId);
+        setFotosUris(borrador.fotosUris);
+        setDescripcion(borrador.descripcion);
+        setAudioUri(borrador.audioUri);
+        setPuntoManual(borrador.puntoManual);
+      })
+      .catch(() => undefined)
+      .finally(() => setBorradorListo(true));
+  }, [autorId]);
+
+  useEffect(() => {
+    if (!autorId || !borradorListo || enviado) return;
+    void guardarBorrador(autorId, { tipoId, fotosUris, descripcion, audioUri, puntoManual });
+  }, [autorId, borradorListo, enviado, tipoId, fotosUris, descripcion, audioUri, puntoManual]);
+
+  useEffect(() => {
+    if (!clavePunto || !punto) return;
+    let vigente = true;
+    void direccionDePunto(punto).then((texto) => {
+      if (vigente) setDireccionHallada({ clave: clavePunto, texto });
+    });
+    return () => {
+      vigente = false;
+    };
+    // `punto` cambia de identidad en cada render; clavePunto es su valor real.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavePunto]);
+
+  const asegurarPermisoCamara = async (): Promise<boolean> => {
+    const permiso = permisoCamara?.granted ? permisoCamara : await pedirPermisoCamara();
+    if (permiso.granted) return true;
+    Alert.alert(
+      "Necesitamos la cámara",
+      "La foto del problema es obligatoria: sin ella no podemos tomar el reporte. Habilitá la cámara desde la configuración del teléfono o elegí una foto de la galería.",
+      [
+        { text: "Ahora no", style: "cancel" },
+        { text: "Abrir configuración", onPress: () => void Linking.openSettings() },
+      ],
+    );
+    return false;
   };
 
-  const handleTomarFoto = async () => {
-    if (cameraRef.current) {
-      try {
-        const foto = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-        if (foto) {
-          setFotosUris((prev) => [...prev, foto.uri]);
-          setMostrarCamara(false);
-        }
-      } catch (error) {
-        Alert.alert('Error', 'No se pudo capturar la foto');
-      }
-    }
-  };
-
-  const eliminarFoto = (index: number) => {
-    setFotosUris((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // === LÓGICA DE AUDIO ACTUALIZADA ===
-  const toggleGrabacion = async () => {
-    try {
-      if (audioRecorder.isRecording) {
-        await audioRecorder.stop();
-        setAudioUri(audioRecorder.uri);
-      } else {
-        const permiso = await AudioModule.requestRecordingPermissionsAsync();
-        if (permiso.granted) {
-          await audioRecorder.record();
-          setAudioUri(null); 
-        } else {
-          Alert.alert('Permiso denegado', 'Se requiere acceso al micrófono para grabar el detalle.');
-        }
-      }
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo procesar la grabación de audio.');
-    }
-  };
-
-  const eliminarAudio = () => {
-    setAudioUri(null);
-  };
-
-  const handleEnviar = async () => {
-    if (fotosUris.length === 0) {
-      Alert.alert('Falta foto', 'Es obligatorio incluir al menos una foto del problema.');
+  const agregarFoto = async (uri: string, extension: string) => {
+    if (tamanoArchivoLocal(uri) > LIMITE_FOTO_BYTES) {
+      Alert.alert("La foto es muy pesada", "Probá con otra foto, por favor.");
       return;
     }
-    if (!tipoId) return;
+    try {
+      const local = await guardarArchivoLocal(uri, "fot", extension);
+      setFotosUris((actuales) => [...actuales, local].slice(0, MAX_FOTOS));
+    } catch {
+      Alert.alert("No se pudo guardar la foto", "Probá de nuevo, por favor.");
+    }
+  };
+
+  const abrirCamara = async () => {
+    if (await asegurarPermisoCamara()) setCamaraAbierta(true);
+  };
+
+  const abrirGaleria = async () => {
+    const resultado = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.6,
+    });
+    const foto = resultado.canceled ? undefined : resultado.assets[0];
+    if (!foto) return;
+    const extension = EXTENSIONES_FOTO[foto.mimeType ?? "image/jpeg"];
+    if (!extension) {
+      Alert.alert("No podemos usar esa foto", "Elegí una foto en formato JPG o PNG, o sacá una nueva.");
+      return;
+    }
+    await agregarFoto(foto.uri, extension);
+  };
+
+  const quitarFoto = (uri: string) => {
+    borrarArchivoLocal(uri);
+    setFotosUris((actuales) => actuales.filter((actual) => actual !== uri));
+  };
+
+  const enviar = async () => {
+    const faltante = !tipoId
+      ? "Elegí qué tipo de problema es."
+      : fotosUris.length === 0
+        ? "Sacale una foto al problema. Sin foto no podemos tomar el reporte."
+        : !punto
+          ? "Marcá en el mapa dónde está el problema."
+          : fueraDeLaCiudad
+            ? "Ese punto queda fuera de Gualeguaychú. Corregilo en el mapa."
+            : grabandoAudio
+              ? "Terminá de grabar la nota de voz antes de enviar."
+              : null;
+    if (faltante || !tipoId || !punto) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert("Falta un dato", faltante ?? "");
+      return;
+    }
 
     setGuardando(true);
-    const payload: PayloadCrearReporte = { 
-      tipoId,
-      fotosUris, 
-      coordenadas,
-      direccion,
-      descripcion: descripcion.trim() !== '' ? descripcion : null,
-      audioUrl: audioUri 
-    };
-
     try {
-      const reporteGenerado = await crearReporte(payload);
-      Alert.alert('Reporte guardado', `Tu número de seguimiento es ${reporteGenerado.codigo}. Se enviará al recuperar la señal.`);
-      router.back();
+      const texto = descripcion.trim();
+      const reporte = await crearReporte({
+        tipoId,
+        fotosUris,
+        coordenadas: punto,
+        direccion: direccion ?? textoPuntoSinDireccion(punto),
+        direccionPendiente: direccion === null,
+        descripcion: texto === "" ? null : texto,
+        audioUrl: audioUri,
+      });
+      if (autorId) await borrarBorrador(autorId);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setEnviado(reporte);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar el reporte localmente.');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "No se pudo guardar el reporte",
+        error instanceof Error ? error.message : "Probá de nuevo, por favor.",
+      );
     } finally {
       setGuardando(false);
     }
   };
 
-  if (mostrarCamara) {
+  if (enviado) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
-        <View style={styles.cameraOverlay}>
-          <TouchableOpacity style={styles.cameraCloseButton} onPress={() => setMostrarCamara(false)}>
-            <Icon name="close" size={30} color="#FFF" />
-          </TouchableOpacity>
-          <View style={styles.cameraControls}>
-            <TouchableOpacity style={styles.captureButton} onPress={handleTomarFoto}>
-              <View style={styles.captureButtonInner} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      <ConfirmacionReporte
+        reporteInicial={enviado}
+        onVerMisReportes={() => router.replace("/(tabs)/mis-reportes")}
+        onTerminar={() => router.replace("/(tabs)")}
+      />
     );
   }
 
+  const buscandoGps = permitido !== false && !errorGps && !encontrada;
+  const textoDonde = !punto
+    ? buscandoGps
+      ? "Buscando tu ubicación..."
+      : permitido === false
+        ? "No tenemos permiso para ver tu ubicación. Marcá el punto en el mapa."
+        : "No pudimos encontrarte. Marcá el punto en el mapa."
+    : direccion ?? "Punto marcado. Vamos a completar la calle cuando haya señal.";
+  const distancia =
+    punto && encontrada && puntoManual ? Math.round(distanciaMetros(ubicacion, punto)) : null;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nuevo Reporte</Text>
-      </View>
-
-      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
-        <Text style={styles.sectionTitle}>PASO 1: CATEGORÍA</Text>
+    <KeyboardAvoidingView
+      style={styles.contenedor}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
+        <Text style={styles.titulo} accessibilityRole="header">¿Qué pasa?</Text>
         {cargandoTipos ? (
-          <ActivityIndicator size="large" color="#1A202C" style={{ marginVertical: 20 }} />
+          <ActivityIndicator size="large" color={COLORES.primario} />
+        ) : errorTipos ? (
+          <Pressable style={styles.boton} onPress={cargarCatalogos} accessibilityRole="button">
+            <Text style={styles.botonTexto}>No se pudo cargar. Reintentar</Text>
+          </Pressable>
         ) : (
-          <View style={styles.gridContainer}>
-            {tiposReporte.map((tipo) => (
-              <Pressable
-                key={tipo.id}
-                style={[styles.categoryCard, tipoId === tipo.id && styles.categoryCardSelected]}
-                onPress={() => setTipoId(tipo.id)}
-              >
-                <Icon name={tipo.icono as NombreIcono} size={32} color={tipoId === tipo.id ? '#000' : '#8A92A6'} />
-                <Text style={[styles.categoryText, tipoId === tipo.id && styles.categoryTextSelected]}>
-                  {tipo.nombre}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={styles.grilla}>
+            {tipos.map((tipo) => {
+              const elegido = tipoId === tipo.id;
+              return (
+                <Pressable
+                  key={tipo.id}
+                  style={[styles.tipo, elegido && { borderColor: tipo.color, backgroundColor: `${tipo.color}1A` }]}
+                  onPress={() => setTipoId(tipo.id)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: elegido }}
+                  accessibilityLabel={tipo.nombre}
+                >
+                  <Icon name={tipo.icono as NombreIcono} size={32} color={elegido ? tipo.color : COLORES.textoSuave} />
+                  <Text style={[styles.tipoTexto, elegido && styles.tipoTextoElegido]} numberOfLines={2}>
+                    {tipo.nombre}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>PASO 2: FOTOS (OBLIGATORIA)</Text>
-        {fotosUris.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.fotosContainer}>
-            {fotosUris.map((uri, index) => (
-              <View key={index} style={styles.fotoPreviewContainer}>
-                <Image source={{ uri }} style={styles.fotoPreview} />
-                <TouchableOpacity style={styles.eliminarFotoBtn} onPress={() => eliminarFoto(index)}>
-                  <Icon name="close-circle" size={24} color="#E53E3E" />
-                </TouchableOpacity>
+        <Text style={styles.titulo} accessibilityRole="header">Foto (obligatoria)</Text>
+        {fotosUris.length > 0 && (
+          <View style={styles.fotos}>
+            {fotosUris.map((uri) => (
+              <View key={uri} style={styles.fotoCaja}>
+                <Image source={{ uri }} style={styles.foto} accessibilityLabel="Foto del problema" />
+                <Pressable
+                  style={styles.fotoQuitar}
+                  onPress={() => quitarFoto(uri)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar esta foto"
+                >
+                  <Icon name="close" size={26} color="#FFFFFF" />
+                </Pressable>
               </View>
             ))}
-            <TouchableOpacity style={styles.addMorePhotosBtn} onPress={handleAbrirCamara}>
-              <Icon name="add" size={32} color="#4A5568" />
-              <Text style={{ fontSize: 12, color: '#4A5568', marginTop: 4 }}>Otra foto</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        ) : (
-          <TouchableOpacity style={styles.photoButton} onPress={handleAbrirCamara}>
-            <Icon name="camera-outline" size={28} color="#8A92A6" />
-            <Text style={styles.photoText}>Tomar foto (Obligatoria)</Text>
-          </TouchableOpacity>
+          </View>
+        )}
+        {fotosUris.length < MAX_FOTOS && (
+          <View style={styles.fila}>
+            <Pressable style={[styles.boton, styles.flexible]} onPress={abrirCamara} accessibilityRole="button">
+              <Icon name="camera-outline" size={28} color={COLORES.texto} />
+              <Text style={styles.botonTexto}>{fotosUris.length === 0 ? "Tomar foto" : "Otra foto"}</Text>
+            </Pressable>
+            <Pressable style={[styles.boton, styles.flexible]} onPress={abrirGaleria} accessibilityRole="button">
+              <Icon name="images-outline" size={28} color={COLORES.texto} />
+              <Text style={styles.botonTexto}>Galería</Text>
+            </Pressable>
+          </View>
         )}
 
-        <Text style={styles.sectionTitle}>PASO 3: UBICACIÓN</Text>
-        <View style={styles.mapContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Icon name="location" size={48} color="#202A39" />
-            <Text style={{marginTop: 8, color: '#718096'}}>{direccion}</Text>
-          </View>
-          <TouchableOpacity style={styles.mapButton}>
-            <Icon name="location-outline" size={20} color="#000" />
-            <Text style={styles.mapButtonText}>Corregir en el mapa</Text>
-          </TouchableOpacity>
+        <Text style={styles.titulo} accessibilityRole="header">¿Dónde?</Text>
+        <View style={styles.tarjeta}>
+          {punto && <VistaPunto punto={punto} />}
+          <Text style={styles.donde}>{textoDonde}</Text>
+          {distancia !== null && <Text style={styles.ayuda}>A {distancia} m de vos</Text>}
+          {fueraDeLaCiudad && (
+            <Text style={styles.aviso}>Ese punto queda fuera de Gualeguaychú. Corregilo en el mapa.</Text>
+          )}
+          <Pressable style={styles.boton} onPress={() => setMapaAbierto(true)} accessibilityRole="button">
+            <Icon name="location-outline" size={28} color={COLORES.texto} />
+            <Text style={styles.botonTexto}>{punto ? "Corregir en el mapa" : "Marcar en el mapa"}</Text>
+          </Pressable>
         </View>
 
-        <Text style={styles.sectionTitle}>PASO 4: DETALLE</Text>
-        <View style={styles.detailContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Escriba una descripción breve del problema..."
-            multiline
-            value={descripcion}
-            onChangeText={setDescripcion}
-          />
-          
-          <View style={styles.audioContainer}>
-            {/* Si NO hay audio grabado, mostramos el botón de grabar/detener */}
-            {!audioUri ? (
-              <TouchableOpacity 
-                style={[styles.audioButton, audioRecorder.isRecording && styles.audioButtonRecording]} 
-                onPress={toggleGrabacion}
-              >
-                <Icon name={audioRecorder.isRecording ? "stop" : "mic-outline"} size={24} color={audioRecorder.isRecording ? "#FFF" : "#4A5568"} />
-              </TouchableOpacity>
-            ) : (
-              /* Si hay audio grabado, mostramos los controles de reproducción */
-              <View style={styles.audioPreview}>
-                <TouchableOpacity onPress={() => audioPlayer.playing ? audioPlayer.pause() : audioPlayer.play()}>
-                  <Icon name={audioPlayer.playing ? "pause-circle" : "play-circle"} size={36} color="#1A202C" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={eliminarAudio} style={{ marginLeft: 8 }}>
-                  <Icon name="trash-outline" size={24} color="#E53E3E" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
+        <Text style={styles.titulo} accessibilityRole="header">Contanos</Text>
+        <TextInput
+          style={styles.descripcion}
+          placeholder="Escribí qué pasa (opcional)"
+          placeholderTextColor={COLORES.textoSuave}
+          multiline
+          maxLength={MAX_DESCRIPCION}
+          value={descripcion}
+          onChangeText={setDescripcion}
+          accessibilityLabel="Descripción del problema"
+        />
+        <NotaDeVoz uri={audioUri} onCambiar={setAudioUri} onGrabando={setGrabandoAudio} />
       </ScrollView>
 
-      {isOffline && (
-        <View style={styles.offlineBanner}>
-          <Icon name="cloud-offline-outline" size={20} color="#FFF" />
-          <Text style={styles.offlineText}>Guardado. Se subirá al recuperar señal.</Text>
+      {red.isConnected === false && (
+        <View style={styles.sinSenal}>
+          <Icon name="cloud-offline-outline" size={24} color="#FFFFFF" />
+          <Text style={styles.sinSenalTexto}>Sin señal. Tu reporte se guarda y se sube solo.</Text>
         </View>
       )}
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={[styles.submitButton, guardando && { opacity: 0.7 }]} onPress={handleEnviar} disabled={guardando || cargandoTipos}>
-          <Text style={styles.submitButtonText}>{guardando ? 'Guardando...' : 'Enviar reporte'}</Text>
-        </TouchableOpacity>
+      <View style={[styles.pie, { paddingBottom: margenes.bottom + 12 }]}>
+        <Pressable
+          style={[styles.enviar, guardando && styles.deshabilitado]}
+          onPress={enviar}
+          disabled={guardando}
+          accessibilityRole="button"
+        >
+          {guardando ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.enviarTexto}>Enviar</Text>
+          )}
+        </Pressable>
       </View>
-    </View>
+
+      {camaraAbierta && (
+        <CamaraReporte
+          onCapturar={(uri) => {
+            setCamaraAbierta(false);
+            void agregarFoto(uri, "jpg");
+          }}
+          onCerrar={() => setCamaraAbierta(false)}
+        />
+      )}
+      {mapaAbierto && (
+        <SelectorPunto
+          inicial={punto && !fueraDeLaCiudad ? punto : CENTRO_CIUDAD}
+          onConfirmar={(elegido) => {
+            setPuntoManual(elegido);
+            setMapaAbierto(false);
+          }}
+          onCerrar={() => setMapaAbierto(false)}
+        />
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 50, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  backButton: { marginRight: 16 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A202C' },
-  scrollContent: { flex: 1 },
-  scrollInner: { padding: 20, paddingBottom: 40 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#718096', marginBottom: 12, marginTop: 16 },
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
-  categoryCard: { width: '31%', aspectRatio: 1, backgroundColor: '#FFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 10 },
-  categoryCardSelected: { borderColor: '#1A202C', borderWidth: 2 },
-  categoryText: { marginTop: 8, fontSize: 13, color: '#718096', fontWeight: '500' },
-  categoryTextSelected: { color: '#1A202C', fontWeight: '700' },
-  
-  photoButton: { backgroundColor: '#E2E8F0', borderWidth: 1, borderColor: '#CBD5E0', borderStyle: 'dashed', borderRadius: 12, padding: 30, alignItems: 'center', justifyContent: 'center' },
-  photoText: { marginTop: 10, fontSize: 14, color: '#4A5568', fontWeight: '500' },
-  
-  fotosContainer: { flexDirection: 'row', paddingVertical: 10 },
-  fotoPreviewContainer: { position: 'relative', marginRight: 15 },
-  fotoPreview: { width: 100, height: 100, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  eliminarFotoBtn: { position: 'absolute', top: -10, right: -10, backgroundColor: '#FFF', borderRadius: 12 },
-  addMorePhotosBtn: { width: 100, height: 100, borderRadius: 12, borderWidth: 1, borderColor: '#CBD5E0', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E2E8F0' },
-
-  mapContainer: { backgroundColor: '#FFF', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0' },
-  mapPlaceholder: { height: 120, backgroundColor: '#EDF2F7', alignItems: 'center', justifyContent: 'center' },
-  mapButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#F8F9FA' },
-  mapButtonText: { marginLeft: 8, fontSize: 14, fontWeight: '600', color: '#1A202C' },
-  
-  detailContainer: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  textInput: { flex: 1, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 16, height: 100, textAlignVertical: 'top', fontSize: 14 },
-  
-  audioContainer: { alignItems: 'center', justifyContent: 'center', width: 60 },
-  audioButton: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  audioButtonRecording: { backgroundColor: '#E53E3E', borderColor: '#E53E3E' },
-  audioPreview: { alignItems: 'center', justifyContent: 'center', gap: 8 },
-
-  offlineBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#4A5568', padding: 12, paddingHorizontal: 20 },
-  offlineText: { color: '#FFF', marginLeft: 10, fontSize: 13, fontWeight: '500' },
-  footer: { padding: 20, backgroundColor: '#F8F9FA' },
-  submitButton: { backgroundColor: '#1A202C', borderRadius: 30, padding: 18, alignItems: 'center' },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-
-  cameraOverlay: { flex: 1, justifyContent: 'space-between', padding: 20 },
-  cameraCloseButton: { alignSelf: 'flex-start', marginTop: 40, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 8 },
-  cameraControls: { flexDirection: 'row', justifyContent: 'center', marginBottom: 30 },
-  captureButton: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255, 255, 255, 0.3)', justifyContent: 'center', alignItems: 'center' },
-  captureButtonInner: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#FFF' },
+  contenedor: { flex: 1, backgroundColor: COLORES.fondo },
+  contenido: { padding: 16, paddingBottom: 28, gap: 12 },
+  titulo: { marginTop: 8, fontSize: 22, fontWeight: "800", color: COLORES.texto },
+  grilla: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tipo: {
+    width: "23.5%",
+    minHeight: 96,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORES.linea,
+    backgroundColor: COLORES.superficie,
+  },
+  tipoTexto: { fontSize: 14, lineHeight: 17, fontWeight: "600", color: COLORES.texto, textAlign: "center" },
+  tipoTextoElegido: { fontWeight: "800" },
+  fila: { flexDirection: "row", gap: 10 },
+  flexible: { flex: 1 },
+  boton: {
+    minHeight: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORES.linea,
+    backgroundColor: COLORES.superficie,
+  },
+  botonTexto: { fontSize: 18, fontWeight: "600", color: COLORES.texto },
+  fotos: { flexDirection: "row", gap: 10 },
+  fotoCaja: { flex: 1, maxWidth: "49%" },
+  foto: { width: "100%", aspectRatio: 1, borderRadius: 14, backgroundColor: COLORES.linea },
+  fotoQuitar: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.65)",
+  },
+  tarjeta: {
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: COLORES.superficie,
+  },
+  donde: { fontSize: 19, fontWeight: "600", color: COLORES.texto },
+  ayuda: { fontSize: 16, color: COLORES.textoSuave },
+  aviso: { fontSize: 17, fontWeight: "600", color: "#B91C1C" },
+  descripcion: {
+    minHeight: 110,
+    padding: 14,
+    fontSize: 18,
+    textAlignVertical: "top",
+    color: COLORES.texto,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORES.linea,
+    backgroundColor: COLORES.superficie,
+  },
+  sinSenal: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#4B5563",
+  },
+  sinSenalTexto: { flex: 1, fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  pie: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: COLORES.fondo },
+  enviar: {
+    minHeight: 68,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: COLORES.primario,
+  },
+  enviarTexto: { fontSize: 22, fontWeight: "800", color: "#FFFFFF" },
+  deshabilitado: { opacity: 0.6 },
 });

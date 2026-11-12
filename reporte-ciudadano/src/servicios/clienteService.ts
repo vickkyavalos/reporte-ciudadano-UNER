@@ -39,7 +39,7 @@ export const borrarToken = async () => {
   await SecureStore.deleteItemAsync('token');
 };
 
-type Opciones = { metodo?: string; cuerpo?: unknown; formData?: FormData };
+type Opciones = { metodo?: string; cuerpo?: unknown; formData?: FormData; timeoutMs?: number };
 
 export async function pedir<T>(
   ruta: string,
@@ -54,15 +54,23 @@ export async function pedir<T>(
   if (token) headers.Authorization = `Bearer ${token}`;
   if (opciones.cuerpo) headers['Content-Type'] = 'application/json';
 
+  const corte = new AbortController();
+  const temporizador = opciones.timeoutMs
+    ? setTimeout(() => corte.abort(), opciones.timeoutMs)
+    : null;
+
   let res: Response;
   try {
     res = await fetch(`${BASE}${ruta}`, {
       method: opciones.metodo ?? 'GET',
       headers,
       body: opciones.formData ?? (opciones.cuerpo ? JSON.stringify(opciones.cuerpo) : undefined),
+      signal: corte.signal,
     });
   } catch {
     throw new ErrorApi('SIN_CONEXION', 'No hay conexión. Probá de nuevo.', 0);
+  } finally {
+    if (temporizador) clearTimeout(temporizador);
   }
 
   const json = await res.json().catch(() => null);

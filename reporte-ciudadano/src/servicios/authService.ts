@@ -1,100 +1,77 @@
-// // src/servicios/authService.ts
-// import type { Usuario } from '@/tipos/usuario.interface';
-// import { mock_usuario } from '@/mocks/usuario.mocks';
+import * as SecureStore from 'expo-secure-store';
+import { api, CLAVE_TOKEN, ErrorApi } from './api';
+import type { Usuario } from '../tipos/usuario.interface';
 
-// let usuarioActual: Usuario | null = null;
-
-// export async function iniciarSesion(identificador: string, contrasena: string): Promise<Usuario> {
-//   await new Promise((r) => setTimeout(r, 300)); // simula red
-//   const usuario = mock_usuario.find(
-//     (u) => u.email === identificador.trim().toLowerCase()
-//   );
-//   if (!usuario) {
-//     throw { codigo: 'CREDENCIALES_INVALIDAS', mensaje: 'Los datos ingresados no son correctos.' };
-//   }
-//   usuarioActual = usuario;
-//   return usuario;
-// }
-
-// export async function cerrarSesion(): Promise<void> {
-//   usuarioActual = null;
-// }
-
-// export function haySesion(): boolean {
-//   return usuarioActual !== null;
-// }
-
-// export function obtenerUsuario(): Usuario | null {
-//   return usuarioActual;
-// }
-
-// export function obtenerRol() {
-//   return usuarioActual?.rol ?? null;
-// }
-
-// src/servicios/authService.ts
-// src/servicios/authService.ts
-import type { Usuario } from '@/tipos/usuario.interface';
-import { pedir, guardarToken, obtenerToken, borrarToken, onSesionExpirada } from "./clienteService";
+const CLAVE_USUARIO = 'usuario';
 
 let usuarioActual: Usuario | null = null;
 
-onSesionExpirada(() => {
-  usuarioActual = null;
-});
-
-export async function iniciarSesion(identificador: string, contrasena: string): Promise<Usuario> {
-  const { datos } = await pedir<{ token: string; usuario: Usuario }>('/auth/ingreso', {
-    metodo: 'POST',
-    cuerpo: { email: identificador.trim().toLowerCase(), contrasena },
-  });
-  await guardarToken(datos.token);
-  usuarioActual = datos.usuario;
-  return datos.usuario;
+async function recordarUsuario(usuario: Usuario): Promise<Usuario> {
+	usuarioActual = usuario;
+	await SecureStore.setItemAsync(CLAVE_USUARIO, JSON.stringify(usuario));
+	return usuario;
 }
 
-export async function restaurarSesion(): Promise<Usuario | null> {
-  const token = await obtenerToken();
-  if (!token) return null;
-  try {
-    const { datos } = await pedir<Usuario>('/yo');
-    usuarioActual = datos;
-    return datos;
-  } catch {
-    await borrarToken();
-    usuarioActual = null;
-    return null;
-  }
-}
-
-export async function cerrarSesion(): Promise<void> {
-  await borrarToken();
-  usuarioActual = null;
-}
-
-export function haySesion(): boolean {
-  return usuarioActual !== null;
+async function leerUsuarioGuardado(): Promise<Usuario | null> {
+	const guardado = await SecureStore.getItemAsync(CLAVE_USUARIO);
+	if (!guardado) return null;
+	try {
+		return JSON.parse(guardado) as Usuario;
+	} catch {
+		return null;
+	}
 }
 
 export function obtenerUsuario(): Usuario | null {
-  return usuarioActual;
+	return usuarioActual;
 }
 
-export function obtenerRol() {
-  return usuarioActual?.rol ?? null;
+export async function iniciarSesion(identifier: string, password: string): Promise<Usuario> {
+	const email = identifier.trim().toLowerCase();
+	if (!email.includes('@')) {
+		throw new ErrorApi('VALIDACION_FALLIDA', 'Ingrese su correo electrónico.');
+	}
+	const res = await api.post('/auth/ingreso', { email, contrasena: password });
+	const { token, usuario } = res.data.datos as { token: string; usuario: Usuario };
+	await SecureStore.setItemAsync(CLAVE_TOKEN, token);
+	return recordarUsuario(usuario);
+}
+
+export async function cerrarSesion() {
+	await SecureStore.deleteItemAsync(CLAVE_TOKEN);
+	await SecureStore.deleteItemAsync(CLAVE_USUARIO);
+	usuarioActual = null;
+}
+
+export async function obtenerSesion(): Promise<Usuario | null> {
+	const token = await SecureStore.getItemAsync(CLAVE_TOKEN);
+	if (!token) return null;
+	try {
+		const res = await api.get('/yo');
+		return await recordarUsuario(res.data.datos as Usuario);
+	} catch (error) {
+		if (error instanceof ErrorApi && error.status === 401) {
+			await cerrarSesion();
+			return null;
+		}
+		// Sin conexión o con la API caída, se sigue con el último usuario conocido.
+		usuarioActual = await leerUsuarioGuardado();
+		return usuarioActual;
+	}
 }
 
 export async function actualizarPreferenciaAvisos(avisosActivos: boolean): Promise<Usuario> {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  if (!usuarioActual) {
-    throw new Error("Iniciá sesión para cambiar la preferencia de avisos.");
-  }
-
-  const usuarioMock = mock_usuario.find((usuario) => usuario.id === usuarioActual?.id);
-  if (!usuarioMock) {
-    throw new Error("No se encontró el usuario actual.");
-  }
-  usuarioMock.avisosActivos = avisosActivos;
-  usuarioActual = { ...usuarioActual, avisosActivos };
-  return { ...usuarioActual };
+	const res = await api.patch('/yo', { avisosActivos });
+	return recordarUsuario(res.data.datos as Usuario);
 }
+
+export function haySesion(): boolean {
+	return usuarioActual !== null;
+}
+
+export function obtenerRol(): Usuario['rol'] | null {
+	return usuarioActual?.rol ?? null;
+}
+
+export const obtenerYo = obtenerUsuario;
+export const restaurarSesion = obtenerSesion;
