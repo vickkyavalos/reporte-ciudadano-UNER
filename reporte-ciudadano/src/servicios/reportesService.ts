@@ -195,11 +195,7 @@ export function obtenerReporteOperadorPorId(reporteId: string): Promise<Reporte>
 // archivo se sube primero para que un fallo de subida no deje el reclamo a medias.
 export async function actualizarReporteOperador(
   reporteId: string,
-<<<<<<< HEAD
   cambios: CambiosOperadorReporte
-=======
-  cambios: CambiosOperadorReporte,
->>>>>>> 69d3e449f3539ea5f05f63a8ca8375b357452470
 ): Promise<Reporte> {
   const comentario = cambios.comentario.trim();
   if (!comentario) {
