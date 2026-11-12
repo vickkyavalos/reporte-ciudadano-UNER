@@ -9,14 +9,17 @@ function Rutas() {
   if (cargando) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!usuario}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!usuario}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-    </Stack>
+   <Stack screenOptions={{ headerShown: false }}>
+  <Stack.Protected guard={!!usuario}>
+    <Stack.Screen name="(tabs)" />
+    <Stack.Screen name="operador" />
+    <Stack.Screen name="reportes" />
+  </Stack.Protected>
+
+  <Stack.Protected guard={!usuario}>
+    <Stack.Screen name="login" />
+  </Stack.Protected>
+</Stack>
   );
 }
 
