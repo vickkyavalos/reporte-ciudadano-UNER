@@ -10,11 +10,20 @@ function Rutas() {
 
   if (cargando) return null;
 
+  const esVecino = usuario?.rol === 'vecino';
+  const esOperador = usuario?.rol === 'operador';
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!usuario}>
+      <Stack.Protected guard={esVecino}>
         <Stack.Screen name="(tabs)" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={esOperador}>
         <Stack.Screen name="operador" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!!usuario}>
         <Stack.Screen name="reportes" />
       </Stack.Protected>
 
