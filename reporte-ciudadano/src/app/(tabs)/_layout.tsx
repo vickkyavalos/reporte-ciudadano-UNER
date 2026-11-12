@@ -1,7 +1,7 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import Ionicons from '@react-native-vector-icons/ionicons';
 
-import { Redirect } from 'expo-router';
+
 import { useAuth } from '@/providers/AuthProvider';
 
 
