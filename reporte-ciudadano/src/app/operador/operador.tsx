@@ -100,6 +100,7 @@ export default function OperadorScreen() {
     try {
       const reclamo = await buscarDetalleOperadorPorQr(valor);
       setEscanerAbierto(false);
+      qrEnProceso.current = false;
       router.push({
         pathname: "/operador/detalle_operador",
         params: { id: reclamo.id },
