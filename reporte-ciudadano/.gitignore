@@ -33,6 +33,11 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Clave privada de la cuenta de servicio de Firebase (FCM). Es secreta: se sube a EAS con
+# `eas credentials` y nunca al repo. (google-services.json sí se commitea: es público.)
+*firebase-adminsdk*.json
+cuenta-servicio*.json
+
 # typescript
 *.tsbuildinfo
 
