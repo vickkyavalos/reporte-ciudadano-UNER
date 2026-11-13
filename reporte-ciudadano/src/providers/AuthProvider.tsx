@@ -8,6 +8,7 @@ type Ctx = {
   cargando: boolean;
   esOperador: boolean;
   ingresar: (email: string, contrasena: string) => Promise<void>;
+  ingresarConHuella: () => Promise<boolean>;
   salir: () => Promise<void>;
 };
 
@@ -38,6 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         esOperador: usuario?.rol === 'operador',
         ingresar: async (email, contrasena) => {
           setUsuario(await auth.iniciarSesion(email, contrasena));
+        },
+        ingresarConHuella: async () => {
+          const u = await auth.ingresarConHuellaGuardada();
+          if (!u) return false;
+          setUsuario(u);
+          return true;
         },
         salir: async () => {
           await auth.cerrarSesion();
