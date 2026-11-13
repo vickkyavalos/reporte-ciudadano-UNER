@@ -81,10 +81,14 @@ export default function DetalleOperadorScreen() {
     setCargando(true);
     setError(null);
     try {
-      const [reclamo, opciones] = await Promise.all([
-        obtenerDetalleOperador(reclamoId),
-        obtenerCatalogosDetalleOperador(),
-      ]);
+      const reclamo = await obtenerDetalleOperador(reclamoId);
+      if (!reclamo.zonaId) {
+        throw new Error("El reclamo no tiene una zona válida.");
+      }
+      const opciones = await obtenerCatalogosDetalleOperador(
+        reclamo.zonaId,
+        reclamo.id,
+      );
       setDetalle(reclamo);
       setCatalogos(opciones);
       setEstadoSeleccionado(reclamo.estado);
