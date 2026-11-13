@@ -5,10 +5,8 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { api } from './api';
 
-// Token de Expo de este teléfono, para poder darlo de baja al cerrar sesión.
 const CLAVE_TOKEN_PUSH = 'token_push';
 
-// Cómo se muestran las notificaciones que llegan con la app abierta.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -18,17 +16,12 @@ Notifications.setNotificationHandler({
   }),
 });
 
-/**
- * Pide permiso, obtiene el token de Expo y lo registra en la API (POST /dispositivos) para que
- * lleguen los avisos de cambio de estado y de adhesiones. Si algo falla no rompe nada: la app
- * sigue andando, sólo que sin push.
- */
+
 export async function registrarDispositivo(): Promise<string | null> {
-  // Las push sólo llegan a un teléfono real.
   if (Platform.OS === 'web' || !Device.isDevice) return null;
 
   try {
-    // En Android 13 o más, sin un canal creado ni siquiera aparece el pedido de permiso.
+  
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Estado de reclamos',
@@ -44,7 +37,6 @@ export async function registrarDispositivo(): Promise<string | null> {
     }
     if (status !== 'granted') return null;
 
-    // El token de Expo necesita el id del proyecto de EAS (npx eas-cli init lo agrega a app.json).
     const projectId =
       Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
@@ -65,7 +57,6 @@ export async function registrarDispositivo(): Promise<string | null> {
   }
 }
 
-/** Da de baja el teléfono (DELETE /dispositivos/:token). Se llama antes de cerrar sesión. */
 export async function darDeBajaDispositivo(): Promise<void> {
   if (Platform.OS === 'web') return;
   const tokenExpo = await SecureStore.getItemAsync(CLAVE_TOKEN_PUSH);
@@ -73,12 +64,11 @@ export async function darDeBajaDispositivo(): Promise<void> {
   try {
     await api.delete(`/dispositivos/${encodeURIComponent(tokenExpo)}`);
   } catch {
-    // Si no hay señal no pasa nada: si otro usuario entra en este teléfono, el token pasa a él.
+   
   }
   await SecureStore.deleteItemAsync(CLAVE_TOKEN_PUSH);
 }
 
-// notificación local en el dispositivo
 export async function programarNotificacionLocal(
   titulo: string,
   cuerpo: string,
@@ -90,6 +80,6 @@ export async function programarNotificacionLocal(
       body: cuerpo,
       data: datosExtra || {},
     },
-    trigger: null, // Se ejecuta inmediatamente
+    trigger: null, 
   });
 }
