@@ -4,6 +4,7 @@ import type { ReclamoOperador } from "@/tipos/operador.interface";
 import type { CambiosOperadorReporte } from "@/tipos/reporte.interface";
 
 export interface DetalleReclamoOperador extends ReclamoOperador {
+  zonaId?: string;
   cuadrillaId: string | null;
   fotoProblema: string | null;
   fotoArreglo: string | null;
