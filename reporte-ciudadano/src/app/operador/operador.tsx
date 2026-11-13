@@ -11,7 +11,8 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ESTADOS } from "@/constants/estados";
+import Ionicons from "@react-native-vector-icons/ionicons";
+import { COLORES, ESTADOS } from "@/constants/estados";
 import { useAuth } from "@/providers/AuthProvider";
 import { obtenerReclamosOperador } from "@/servicios/operadorService";
 import { buscarDetalleOperadorPorQr } from "@/servicios/detalleOperadorService";
@@ -230,7 +231,7 @@ export default function OperadorScreen() {
             onPress={salir}
             style={styles.profileButton}
           >
-            <Text style={styles.profileIcon}>•</Text>
+            <Ionicons name="person-outline" size={22} color={COLORES.texto} />
           </Pressable>
         </View>
       </View>
@@ -425,7 +426,6 @@ const styles = StyleSheet.create({
     width: 32, height: 32, alignItems: "center", justifyContent: "center",
     borderRadius: 16, backgroundColor: "#F2F3F5", borderWidth: 1, borderColor: "#E5E7EB",
   },
-  profileIcon: { color: "#526071", fontSize: 18, lineHeight: 22 },
   filters: { flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 },
   filterButton: {
     height: 38, flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center",
