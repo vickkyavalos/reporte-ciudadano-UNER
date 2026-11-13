@@ -1,7 +1,5 @@
 import { Zona } from "@/tipos/zona.interface";
 
-// Las mismas cuatro zonas que siembra la API: comparten aristas, así que no se
-// superponen ni dejan huecos dentro de la planta urbana.
 const NO = { latitud: -32.975, longitud: -58.565 };
 const NE = { latitud: -32.975, longitud: -58.475 };
 const SE = { latitud: -33.055, longitud: -58.475 };

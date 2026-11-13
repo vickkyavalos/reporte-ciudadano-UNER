@@ -15,7 +15,6 @@ export function haceCuanto(iso: string, ahora: string | Date = new Date()): stri
   return `Hace ${dias} ${dias === 1 ? "día" : "días"}`;
 }
 
-// Argentina no cambia de hora: el offset es siempre -03:00.
 export function ahoraIsoArgentina(ahora: Date = new Date()): string {
   const local = new Date(ahora.getTime() - 3 * 60 * 60 * 1000);
   return `${local.toISOString().slice(0, 19)}-03:00`;

@@ -103,8 +103,7 @@ export function MapaReportes({ centro, reportes, tipos, seleccionadoId, onSelecc
     webRef.current?.injectJavaScript(`window.actualizar(${JSON.stringify(datos)}); true;`);
   };
 
-  useEffect(enviarDatos, [reportes, tipos, seleccionadoId, centro]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  useEffect(enviarDatos, [reportes, tipos, seleccionadoId, centro]);
   const onMessage = (e: WebViewMessageEvent) => {
     try {
       const msg = JSON.parse(e.nativeEvent.data);

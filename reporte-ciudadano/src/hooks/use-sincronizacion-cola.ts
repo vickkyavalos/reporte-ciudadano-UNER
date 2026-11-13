@@ -5,8 +5,6 @@ import { sincronizarCola } from "@/servicios/reportes";
 
 const INTERVALO_MS = 60000;
 
-// Una conexión puede figurar activa y no tener internet, y entonces no hay un
-// cambio de red que avise cuando vuelve: por eso además se reintenta cada minuto.
 export function useSincronizacionCola(activa: boolean) {
   useEffect(() => {
     if (!activa || Platform.OS === "web") return;

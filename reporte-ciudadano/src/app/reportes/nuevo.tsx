@@ -138,8 +138,6 @@ export default function NuevoReporteScreen() {
     return () => {
       vigente = false;
     };
-    // `punto` cambia de identidad en cada render; clavePunto es su valor real.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clavePunto]);
 
   const asegurarPermisoCamara = async (): Promise<boolean> => {

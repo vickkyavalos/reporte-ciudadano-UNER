@@ -136,7 +136,7 @@ export default function DetalleReporte() {
 
               {mostrarQR && (
                 <View style={styles.qrCaja}>
-                  {/* Acá va tu componente QR cuando lo tengas, con value={reporte.codigo} */}
+                  {/*componente QR  */}
                   <Text style={styles.qrCodigo}>{reporte.codigo}</Text>
                   <Text style={styles.qrAyuda}>
                     Mostrá este código en el mostrador.

@@ -11,8 +11,6 @@ function carpetaPendientes(): Directory {
   return carpeta;
 }
 
-// En iOS la ruta absoluta del sandbox cambia al actualizar la app: por eso se
-// vuelve a armar con el nombre del archivo en vez de confiar en la guardada.
 export function abrirArchivoLocal(uri: string): File {
   const marca = `/${NOMBRE_CARPETA}/`;
   const posicion = uri.lastIndexOf(marca);
@@ -20,8 +18,6 @@ export function abrirArchivoLocal(uri: string): File {
   return new File(Paths.document, NOMBRE_CARPETA, uri.slice(posicion + marca.length));
 }
 
-// Copia a la carpeta propia de la app: la caché del sistema se puede vaciar
-// antes de que vuelva la señal.
 export async function guardarArchivoLocal(
   uri: string,
   prefijo: "fot" | "aud",
@@ -45,6 +41,5 @@ export function borrarArchivoLocal(uri: string): void {
     const archivo = abrirArchivoLocal(uri);
     if (archivo.exists) archivo.delete();
   } catch {
-    // Un archivo que no se pudo borrar no puede frenar la sincronización.
   }
 }

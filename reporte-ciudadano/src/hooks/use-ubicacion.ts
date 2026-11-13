@@ -6,7 +6,6 @@ export const CENTRO_CIUDAD: Coordenadas = { latitud: -33.0095, longitud: -58.514
 
 interface OpcionesUbicacion {
   precision?: Location.Accuracy;
-  // Si viene, se pide también una posición más rápida para mostrar mientras llega la precisa.
   precisionInicial?: Location.Accuracy;
   edadMaximaMs?: number;
   esperaMs?: number;

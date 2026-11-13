@@ -12,11 +12,10 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useAuth } from '@/providers/AuthProvider';
 import { huellaDisponible, pedirHuella } from '@/servicios/huellaService';
-import { obtenerSesion } from '@/servicios/authService';
 
 export default function LoginScreen() {
 	const router = useRouter();
-	const { ingresar } = useAuth(); 
+	const { ingresar, ingresarConHuella } = useAuth();
 
 	const [identifier, setIdentifier] = useState('');
 	const [password, setPassword] = useState('');
@@ -37,7 +36,7 @@ export default function LoginScreen() {
 		}
 	};
 
-	const entrarConHuella = async () => {
+		const entrarConHuella = async () => {
 		if (cargando) return;
 
 		if (!(await huellaDisponible())) {
@@ -48,13 +47,12 @@ export default function LoginScreen() {
 		const ok = await pedirHuella();
 		if (!ok) return;
 
-		const usuario = await obtenerSesion();
-		if (!usuario) {
+		const entro = await ingresarConHuella();
+		if (!entro) {
 			Alert.alert('Ingresá con tu cuenta', 'Primero iniciá sesión con tu correo y contraseña.');
 			return;
 		}
 
-		
 		router.replace('/');
 	};
 
