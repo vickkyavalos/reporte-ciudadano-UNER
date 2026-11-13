@@ -14,14 +14,6 @@ function Rutas() {
   const esOperador = usuario?.rol === 'operador';
 
   return (
-<<<<<<< HEAD
-   <Stack screenOptions={{ headerShown: false }}>
-  <Stack.Protected guard={!!usuario}>
-    <Stack.Screen name="(tabs)" />
-    <Stack.Screen name="operador" />
-    <Stack.Screen name="reportes" />
-  </Stack.Protected>
-=======
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={esVecino}>
         <Stack.Screen name="(tabs)" />
@@ -34,12 +26,11 @@ function Rutas() {
       <Stack.Protected guard={!!usuario}>
         <Stack.Screen name="reportes" />
       </Stack.Protected>
->>>>>>> 1f4af659bdda021878d4f85c69ade9f06ded0622
 
-  <Stack.Protected guard={!usuario}>
-    <Stack.Screen name="login" />
-  </Stack.Protected>
-</Stack>
+      <Stack.Protected guard={!usuario}>
+        <Stack.Screen name="login" />
+      </Stack.Protected>
+    </Stack>
   );
 }
 
