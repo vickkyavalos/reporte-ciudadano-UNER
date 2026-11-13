@@ -64,13 +64,15 @@ export default function DetalleOperadorScreen() {
   const [cuadrillaSeleccionada, setCuadrillaSeleccionada] = useState<string | null>(null);
   const [duplicadoSeleccionado, setDuplicadoSeleccionado] = useState<string | null>(null);
   const [comentario, setComentario] = useState("");
-  const [fotoArreglo, setFotoArreglo] = useState<string | null>(null);
+  const [fotosArreglo, setFotosArreglo] = useState<string[]>([]);
   const [modalAbierto, setModalAbierto] = useState<ModalDetalle>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fotoProblemaError, setFotoProblemaError] = useState(false);
-  const [fotoArregloError, setFotoArregloError] = useState(false);
+  const [fotosArregloConError, setFotosArregloConError] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const cargarDetalle = useCallback(async () => {
     if (!reclamoId) {
@@ -94,7 +96,11 @@ export default function DetalleOperadorScreen() {
       setEstadoSeleccionado(reclamo.estado);
       setCuadrillaSeleccionada(reclamo.cuadrillaId);
       setDuplicadoSeleccionado(reclamo.duplicadoDe);
-      setFotoArreglo(reclamo.fotoArreglo);
+      setFotosArreglo(
+        reclamo.fotosArreglo ??
+          (reclamo.fotoArreglo ? [reclamo.fotoArreglo] : []),
+      );
+      setFotosArregloConError(new Set());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo cargar el reclamo.");
     } finally {
@@ -117,14 +123,30 @@ export default function DetalleOperadorScreen() {
 
   const adjuntarFoto = async () => {
     setError(null);
+    const disponibles = 3 - fotosArreglo.length;
+    if (disponibles <= 0) {
+      setError("Se pueden adjuntar hasta tres fotos del arreglo.");
+      return;
+    }
     try {
       const resultado = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        selectionLimit: disponibles,
         quality: 0.8,
       });
-      if (!resultado.canceled && resultado.assets[0]) {
-        setFotoArreglo(resultado.assets[0].uri);
-        setFotoArregloError(false);
+      if (!resultado.canceled && resultado.assets.length > 0) {
+        const seleccionadas = resultado.assets
+          .map((asset) => asset.uri)
+          .filter((uri) => !fotosArreglo.includes(uri));
+        setFotosArreglo((actuales) =>
+          Array.from(new Set([...actuales, ...seleccionadas])).slice(0, 3),
+        );
+        setFotosArregloConError((actuales) => {
+          const siguientes = new Set(actuales);
+          seleccionadas.forEach((uri) => siguientes.delete(uri));
+          return siguientes;
+        });
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo seleccionar la foto.");
@@ -144,7 +166,7 @@ export default function DetalleOperadorScreen() {
         estado: estadoSeleccionado,
         cuadrillaId: cuadrillaSeleccionada,
         comentario: comentario.trim(),
-        fotoArreglo,
+        fotosArreglo,
         duplicadoDe: duplicadoSeleccionado,
       });
       Alert.alert("Cambios guardados", "El reclamo se actualizó correctamente.");
@@ -180,6 +202,19 @@ export default function DetalleOperadorScreen() {
       </View>
     );
   }
+
+  const asignacionSolicitada = Boolean(cuadrillaSeleccionada) && (
+    cuadrillaSeleccionada !== detalle.cuadrillaId ||
+    (estadoSeleccionado === "asignado" && detalle.estado !== "asignado")
+  );
+  const estadoFinalPrevisto =
+    asignacionSolicitada && estadoSeleccionado === detalle.estado
+      ? "asignado"
+      : estadoSeleccionado === "asignado" && !asignacionSolicitada
+        ? detalle.estado
+        : estadoSeleccionado;
+  const puedeAdjuntarFoto =
+    estadoFinalPrevisto === "asignado" || estadoFinalPrevisto === "resuelto";
 
   return (
     <View style={styles.screen}>
@@ -292,27 +327,50 @@ export default function DetalleOperadorScreen() {
           <Text style={styles.helperText}>El motivo quedará registrado en el reclamo.</Text>
 
           <Text style={styles.fieldLabel}>Foto del arreglo</Text>
-          {fotoArreglo && !fotoArregloError && (
-            <Image
-              source={{ uri: fotoArreglo }}
-              style={styles.repairImage}
-              resizeMode="cover"
-              onError={() => setFotoArregloError(true)}
-              accessibilityLabel="Foto adjunta del arreglo"
-            />
+          {fotosArreglo.map((foto, indice) =>
+            fotosArregloConError.has(foto) ? (
+              <View key={foto} style={[styles.repairImage, styles.imageFallback]}>
+                <Text style={styles.imageFallbackText}>
+                  No se pudo cargar la foto {indice + 1}
+                </Text>
+              </View>
+            ) : (
+              <Image
+                key={foto}
+                source={{ uri: foto }}
+                style={styles.repairImage}
+                resizeMode="cover"
+                onError={() =>
+                  setFotosArregloConError((actuales) => new Set(actuales).add(foto))
+                }
+                accessibilityLabel={`Foto adjunta del arreglo ${indice + 1}`}
+              />
+            ),
           )}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Adjuntar fotos del arreglo"
+            disabled={fotosArreglo.length >= 3 || !puedeAdjuntarFoto}
             onPress={() => void adjuntarFoto()}
-            style={styles.photoButton}
+            style={[
+              styles.photoButton,
+              (fotosArreglo.length >= 3 || !puedeAdjuntarFoto) &&
+                styles.photoButtonDisabled,
+            ]}
           >
             <Ionicons name="camera-outline" size={16} color="#202A39" />
             <Text style={styles.photoButtonText}>
-              {fotoArreglo ? "Cambiar foto del arreglo" : "Adjuntar foto del arreglo"}
+              {fotosArreglo.length >= 3
+                ? "Máximo de 3 fotos"
+                : fotosArreglo.length > 0
+                  ? "Agregar otra foto del arreglo"
+                  : "Adjuntar foto del arreglo"}
             </Text>
           </Pressable>
           <Text style={styles.helperText}>
-            Obligatoria al cerrar el reclamo como Resuelto. Debe mostrar el trabajo terminado.
+            {puedeAdjuntarFoto
+              ? "Hasta 3 fotos. Obligatoria al cerrar el reclamo como Resuelto y debe mostrar el trabajo terminado."
+              : "Las fotos se habilitan cuando el reclamo está asignado o resuelto."}
           </Text>
 
           {detalle.descripcion && (
@@ -491,6 +549,7 @@ const styles = StyleSheet.create({
     minHeight: 37, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     borderWidth: 1, borderColor: "#D5DAE1", borderRadius: 7, backgroundColor: "#FFFFFF",
   },
+  photoButtonDisabled: { opacity: 0.55 },
   photoButtonText: { color: "#202A39", fontSize: 10, fontWeight: "600" },
   description: { color: "#475467", fontSize: 11, lineHeight: 16 },
   errorText: { marginTop: 10, color: "#B42318", fontSize: 11, lineHeight: 16, textAlign: "center" },
