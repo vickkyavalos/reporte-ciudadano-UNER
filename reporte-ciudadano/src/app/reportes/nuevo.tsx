@@ -24,6 +24,7 @@ import { useNetworkState } from "expo-network";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SelectorPunto, VistaPunto } from "@/components/map/selector-punto";
+import { AvisoDuplicados } from "@/components/reportes/aviso-duplicados";
 import { CamaraReporte } from "@/components/reportes/camara-reporte";
 import { ConfirmacionReporte } from "@/components/reportes/confirmacion-reporte";
 import { NotaDeVoz } from "@/components/reportes/nota-de-voz";
@@ -38,7 +39,13 @@ import {
 } from "@/servicios/archivosLocales";
 import { obtenerUsuario } from "@/servicios/authService";
 import { borrarBorrador, cargarBorrador, guardarBorrador } from "@/servicios/borradorService";
-import { crearReporte, obtenerTipos, obtenerZonas } from "@/servicios/reportes";
+import {
+  buscarDuplicados,
+  crearReporte,
+  obtenerTipos,
+  obtenerZonas,
+  sumarseAReporte,
+} from "@/servicios/reportes";
 import { direccionDePunto, textoPuntoSinDireccion } from "@/servicios/ubicacionService";
 import type { Coordenadas, Reporte, TipoDeReporte } from "@/tipos/reporte.interface";
 import type { Zona } from "@/tipos/zona.interface";
@@ -78,6 +85,8 @@ export default function NuevoReporteScreen() {
   const [permisoCamara, pedirPermisoCamara] = useCameraPermissions();
   const [guardando, setGuardando] = useState(false);
   const [enviado, setEnviado] = useState<Reporte | null>(null);
+  const [duplicados, setDuplicados] = useState<Reporte[]>([]);
+  const [sumandoId, setSumandoId] = useState<string | null>(null);
 
   const { ubicacion, encontrada, precisa, permitido, error: errorGps } = useUbicacion({
     precision: Location.Accuracy.High,
@@ -209,6 +218,41 @@ export default function NuevoReporteScreen() {
       return;
     }
 
+    // Antes de crear uno nuevo se buscan reportes del mismo tipo a menos de 50 m.
+    if (red.isConnected !== false) {
+      setGuardando(true);
+      const cercanos = await buscarDuplicados(punto, tipoId);
+      setGuardando(false);
+      if (cercanos.length > 0) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setDuplicados(cercanos);
+        return;
+      }
+    }
+    await guardarReporte(tipoId, punto);
+  };
+
+  const sumarse = async (reporte: Reporte) => {
+    setSumandoId(reporte.id);
+    try {
+      await sumarseAReporte(reporte.id);
+      fotosUris.forEach(borrarArchivoLocal);
+      if (audioUri) borrarArchivoLocal(audioUri);
+      if (autorId) await borrarBorrador(autorId);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDuplicados([]);
+      router.replace({ pathname: "/reportes/[id]", params: { id: reporte.id } });
+    } catch (error) {
+      Alert.alert(
+        "No pudimos sumarte",
+        error instanceof Error ? error.message : "Probá de nuevo, por favor.",
+      );
+    } finally {
+      setSumandoId(null);
+    }
+  };
+
+  const guardarReporte = async (tipoId: string, punto: Coordenadas) => {
     setGuardando(true);
     try {
       const texto = descripcion.trim();
@@ -394,6 +438,20 @@ export default function NuevoReporteScreen() {
             setMapaAbierto(false);
           }}
           onCerrar={() => setMapaAbierto(false)}
+        />
+      )}
+      {duplicados.length > 0 && tipoId && punto && (
+        <AvisoDuplicados
+          reportes={duplicados}
+          origen={punto}
+          tipoNombre={tipos.find((tipo) => tipo.id === tipoId)?.nombre ?? "este tipo"}
+          sumandoId={sumandoId}
+          onSumarse={(reporte) => void sumarse(reporte)}
+          onEnviarIgual={() => {
+            setDuplicados([]);
+            void guardarReporte(tipoId, punto);
+          }}
+          onCerrar={() => setDuplicados([])}
         />
       )}
     </KeyboardAvoidingView>

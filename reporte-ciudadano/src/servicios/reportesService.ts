@@ -28,6 +28,7 @@ import { ahoraIsoArgentina, generarId } from "@/utils/formato";
 
 const ESPERA_ENVIO_MS = 8000;
 const TIMEOUT_LECTURA_MS = 15000;
+const TIMEOUT_CERCANOS_MS = 8000;
 const TIMEOUT_ARCHIVO_MS = 60000;
 const TIMEOUT_REPORTE_MS = 30000;
 const POR_PAGINA_LISTA = 100;
@@ -122,6 +123,32 @@ export function obtenerZonas(): Promise<Zona[]> {
   return conRespaldo("cache:zonas", () =>
     pedirTodas<Zona>("/zonas", { porPagina: POR_PAGINA_LISTA }),
   );
+}
+
+// Tipos y zonas hacen falta para reportar sin señal: se guardan apenas hay sesión.
+export async function precargarCatalogos(): Promise<void> {
+  await Promise.allSettled([obtenerTipos(), obtenerZonas()]);
+}
+
+// PRD §3: antes de crear, se muestran los reportes abiertos del mismo tipo a
+// menos de 50 m. La API ya excluye resueltos, rechazados y duplicados. Los
+// propios se sacan porque uno no se puede sumar a su reporte. Si falla la
+// consulta (sin señal), se sigue con el reporte nuevo.
+export async function buscarDuplicados(punto: Coordenadas, tipoId: string): Promise<Reporte[]> {
+  const usuarioId = obtenerUsuario()?.id;
+  try {
+    const { datos } = await pedir<ReporteApi[]>(
+      conParametros("/reportes/cercanos", {
+        latitud: punto.latitud,
+        longitud: punto.longitud,
+        tipoId,
+      }),
+      { timeoutMs: TIMEOUT_CERCANOS_MS },
+    );
+    return datos.filter((reporte) => reporte.autorId !== usuarioId).map((reporte) => aReporte(reporte));
+  } catch {
+    return [];
+  }
 }
 
 export function obtenerReportesCercanos(centro: Coordenadas): Promise<RespuestaLista<Reporte>> {
