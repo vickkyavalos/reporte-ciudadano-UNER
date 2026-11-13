@@ -22,6 +22,7 @@ import type {
   TipoDeReporte,
 } from "@/tipos/reporte.interface";
 import { EstadoBadge } from "@/components/ui/text-estado";
+import QRCode from 'react-native-qrcode-svg';
 
 export default function DetalleReporte() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -137,10 +138,22 @@ export default function DetalleReporte() {
               {mostrarQR && (
                 <View style={styles.qrCaja}>
                   {/*componente QR  */}
-                  <Text style={styles.qrCodigo}>{reporte.codigo}</Text>
-                  <Text style={styles.qrAyuda}>
-                    Mostrá este código en el mostrador.
-                  </Text>
+                  {mostrarQR && (
+  <View style={styles.qrCaja}>
+    {/* Reemplaza el comentario por esto: */}
+    <QRCode
+      value={reporte.codigo}
+      size={150}
+      backgroundColor="white"
+      color="black"
+    />
+    
+    <Text style={styles.qrCodigo}>{reporte.codigo}</Text>
+    <Text style={styles.qrAyuda}>
+      Mostrá este código en el mostrador.
+    </Text>
+  </View>
+)}
                 </View>
               )}
             </View>
