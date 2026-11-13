@@ -1,6 +1,7 @@
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useNetworkState } from "expo-network";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORES } from "@/constants/estados";
@@ -19,7 +20,23 @@ const aPunto = (c: { latitude: number; longitude: number }): Coordenadas => ({
   longitud: c.longitude,
 });
 
+/**
+ * En Android, react-native-maps usa Google Maps y necesita una API key. Expo Go trae la suya,
+ * pero un development build o la app instalada usan la del plugin "react-native-maps" del
+ * app.json. Sin key, abrir el mapa cierra la app: por eso se chequea antes de mostrarlo.
+ */
+const mapaDisponible =
+  Platform.OS !== "android" ||
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  (Constants.expoConfig?.plugins ?? []).some(
+    (plugin) =>
+      Array.isArray(plugin) &&
+      plugin[0] === "react-native-maps" &&
+      Boolean((plugin[1] as { androidGoogleMapsApiKey?: string } | undefined)?.androidGoogleMapsApiKey),
+  );
+
 export function VistaPunto({ punto }: { punto: Coordenadas }) {
+  if (!mapaDisponible) return null;
   const posicion = { latitude: punto.latitud, longitude: punto.longitud };
   return (
     <View style={styles.vista} pointerEvents="none" accessibilityLabel="Mapa con el punto del problema">
@@ -43,6 +60,27 @@ export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
   const [punto, setPunto] = useState(inicial);
   const red = useNetworkState();
   const margenes = useSafeAreaInsets();
+
+  if (!mapaDisponible) {
+    return (
+      <Modal animationType="slide" onRequestClose={onCerrar}>
+        <View style={[styles.contenedor, styles.sinMapa, { paddingBottom: margenes.bottom + 16 }]}>
+          <Text style={styles.ayudaTexto}>
+            El mapa no está disponible en esta versión de la app. Podés usar el punto que marcó el
+            GPS.
+          </Text>
+          <View style={styles.acciones}>
+            <Pressable style={styles.secundario} onPress={onCerrar} accessibilityRole="button">
+              <Text style={styles.secundarioTexto}>Cancelar</Text>
+            </Pressable>
+            <Pressable style={styles.primario} onPress={() => onConfirmar(inicial)} accessibilityRole="button">
+              <Text style={styles.primarioTexto}>Usar ese punto</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal animationType="slide" onRequestClose={onCerrar}>
@@ -92,6 +130,7 @@ export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES.superficie },
   mapa: { flex: 1 },
+  sinMapa: { justifyContent: "center", gap: 24, paddingHorizontal: 16 },
   vista: { height: 150, borderRadius: 12, overflow: "hidden" },
   ayuda: {
     position: "absolute",

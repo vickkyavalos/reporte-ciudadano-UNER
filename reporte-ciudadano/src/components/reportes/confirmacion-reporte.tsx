@@ -2,7 +2,14 @@ import Icon from "@react-native-vector-icons/ionicons";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORES } from "@/constants/estados";
+import { actualizarPreferenciaAvisos, obtenerUsuario } from "@/servicios/authService";
 import { suscribirCola } from "@/servicios/colaReportes";
+import {
+  estadoAvisosPush,
+  explicarAvisos,
+  registrarDispositivo,
+  type EstadoAvisosPush,
+} from "@/servicios/notificaciones";
 import { obtenerReportePorId } from "@/servicios/reportes";
 import type { Reporte } from "@/tipos/reporte.interface";
 
@@ -14,6 +21,29 @@ interface Props {
 
 export function ConfirmacionReporte({ reporteInicial, onVerMisReportes, onTerminar }: Props) {
   const [reporte, setReporte] = useState(reporteInicial);
+  const [avisos, setAvisos] = useState<EstadoAvisosPush | null>(null);
+  const [activando, setActivando] = useState(false);
+
+  // Recién acá el vecino tiene algo por lo que quiere que le avisen: es el momento de ofrecerlo.
+  useEffect(() => {
+    void estadoAvisosPush().then((estado) =>
+      setAvisos(estado === "activados" && !obtenerUsuario()?.avisosActivos ? "pendiente" : estado),
+    );
+  }, []);
+
+  const activarAvisos = async () => {
+    setActivando(true);
+    try {
+      if (!obtenerUsuario()?.avisosActivos) await actualizarPreferenciaAvisos(true);
+      const estado = await registrarDispositivo(true);
+      setAvisos(estado);
+      explicarAvisos(estado);
+    } catch {
+      explicarAvisos("no-disponible");
+    } finally {
+      setActivando(false);
+    }
+  };
 
   useEffect(
     () =>
@@ -52,6 +82,21 @@ export function ConfirmacionReporte({ reporteInicial, onVerMisReportes, onTermin
           : "Quedó guardado en tu teléfono. Se sube solo cuando vuelva la señal y ahí te damos el número definitivo. No tenés que hacer nada."}
       </Text>
 
+      {(avisos === "pendiente" || avisos === "bloqueado") && (
+        <Pressable
+          style={[styles.avisar, activando && styles.deshabilitado]}
+          onPress={() => void activarAvisos()}
+          disabled={activando}
+          accessibilityRole="button"
+        >
+          <Icon name="notifications-outline" size={26} color={COLORES.texto} />
+          <Text style={styles.avisarTexto}>Avisarme cuando cambie el estado</Text>
+        </Pressable>
+      )}
+      {avisos === "activados" && (
+        <Text style={styles.avisado}>Te vamos a avisar cuando cambie el estado.</Text>
+      )}
+
       <Pressable style={styles.primario} onPress={onVerMisReportes} accessibilityRole="button">
         <Text style={styles.primarioTexto}>Ver mis reportes</Text>
       </Pressable>
@@ -86,6 +131,21 @@ const styles = StyleSheet.create({
   codigo: { fontSize: 32, fontWeight: "800", color: COLORES.texto },
   pendiente: { fontSize: 18, fontWeight: "700", color: "#B45309" },
   mensaje: { fontSize: 19, lineHeight: 27, color: COLORES.texto, textAlign: "center" },
+  avisar: {
+    alignSelf: "stretch",
+    minHeight: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORES.linea,
+    backgroundColor: COLORES.superficie,
+  },
+  avisarTexto: { fontSize: 18, fontWeight: "600", color: COLORES.texto },
+  avisado: { fontSize: 17, fontWeight: "600", color: "#15803D", textAlign: "center" },
+  deshabilitado: { opacity: 0.6 },
   primario: {
     alignSelf: "stretch",
     minHeight: 64,

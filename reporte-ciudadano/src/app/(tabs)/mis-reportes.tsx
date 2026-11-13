@@ -15,6 +15,7 @@ import { TarjetaMiReporte } from "@/components/reportes/tarjeta-mi-reporte";
 import { COLORES } from "@/constants/estados";
 import { actualizarPreferenciaAvisos, obtenerUsuario } from "@/servicios/authService";
 import { obtenerAvisosUsuario } from "@/servicios/avisosService";
+import { explicarAvisos, registrarDispositivo } from "@/servicios/notificaciones";
 import {
   obtenerMisReportes,
   obtenerTipos,
@@ -74,6 +75,8 @@ export default function MisReportes() {
     try {
       const usuario = await actualizarPreferenciaAvisos(!avisosActivos);
       setAvisosActivos(usuario.avisosActivos);
+      // Al prender los avisos se pide el permiso de notificaciones (no antes).
+      if (usuario.avisosActivos) explicarAvisos(await registrarDispositivo(true));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo actualizar la preferencia.");
     } finally {
