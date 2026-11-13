@@ -23,6 +23,7 @@ import type {
   ReclamoOperador,
 } from "@/tipos/operador.interface";
 import type { EstadoReporte } from "@/tipos/reporte.interface";
+import { BotonCerrarSesion } from "@/components/ui/btn-cerrar-sesion";
 
 const RECLAMOS_POR_PAGINA = 6;
 
@@ -228,14 +229,9 @@ export default function OperadorScreen() {
           >
             <Text style={styles.scanText}>⌗ QR</Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar sesión"
-            onPress={salir}
-            style={styles.profileButton}
-          >
-            <Ionicons name="person-outline" size={22} color={COLORES.texto} />
-          </Pressable>
+
+          {/* Botón para cerrar sesion */}
+          <BotonCerrarSesion />
         </View>
       </View>
 

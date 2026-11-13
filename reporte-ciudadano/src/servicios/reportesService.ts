@@ -36,7 +36,6 @@ const POR_PAGINA_MAPA = 500;
 const RADIO_MAPA_METROS = 50000;
 const TODOS_LOS_ESTADOS = "recibido,en_revision,asignado,resuelto,rechazado";
 
-// La API no manda estos dos campos: el historial sale de /reportes/:id/cambios.
 type ReporteApi = Omit<Reporte, "historial" | "comentarioCierre">;
 
 export class ErrorServicio extends Error {
@@ -67,8 +66,6 @@ async function pedirTodas<T>(
   }
 }
 
-// Sin señal se usa la última copia guardada: los catálogos hacen falta para
-// armar un reporte offline.
 async function conRespaldo<T>(clave: string, traer: () => Promise<T>): Promise<T> {
   try {
     const datos = await traer();
@@ -125,15 +122,10 @@ export function obtenerZonas(): Promise<Zona[]> {
   );
 }
 
-// Tipos y zonas hacen falta para reportar sin señal: se guardan apenas hay sesión.
 export async function precargarCatalogos(): Promise<void> {
   await Promise.allSettled([obtenerTipos(), obtenerZonas()]);
 }
 
-// PRD §3: antes de crear, se muestran los reportes abiertos del mismo tipo a
-// menos de 50 m. La API ya excluye resueltos, rechazados y duplicados. Los
-// propios se sacan porque uno no se puede sumar a su reporte. Si falla la
-// consulta (sin señal), se sigue con el reporte nuevo.
 export async function buscarDuplicados(punto: Coordenadas, tipoId: string): Promise<Reporte[]> {
   const usuarioId = obtenerUsuario()?.id;
   try {
@@ -184,7 +176,6 @@ export async function obtenerMisReportes(autorId: string): Promise<RespuestaList
       ),
     );
   } catch (error) {
-    // Sin señal y sin copia guardada, lo que está en la cola se tiene que seguir viendo.
     if (!esFaltaDeConexion(error) || enCola.length === 0) throw error;
   }
   const pendientes = enCola.filter(
@@ -204,8 +195,6 @@ export async function obtenerReportePorId(reporteId: string): Promise<Reporte> {
   );
 }
 
-// Se usa /reportes y no /bandeja porque la bandeja sólo trae los reportes
-// abiertos y la pantalla del operador también filtra resueltos y rechazados.
 export async function obtenerReportesOperador(): Promise<Reporte[]> {
   const reportes = await pedirTodas<ReporteApi>("/reportes", {
     estado: TODOS_LOS_ESTADOS,
@@ -218,8 +207,6 @@ export function obtenerReporteOperadorPorId(reporteId: string): Promise<Reporte>
   return traerReporteCompleto(reporteId);
 }
 
-// La pantalla guarda todo junto y la API tiene un endpoint por cada acción. El
-// archivo se sube primero para que un fallo de subida no deje el reclamo a medias.
 export async function actualizarReporteOperador(
   reporteId: string,
   cambios: CambiosOperadorReporte,
@@ -368,7 +355,6 @@ async function procesarCola(): Promise<void> {
 let sincronizando: Promise<void> | null = null;
 let otraVuelta = false;
 
-// Una sola sincronización a la vez: dos en paralelo subirían dos veces los mismos archivos.
 export function sincronizarCola(): Promise<void> {
   if (sincronizando) {
     otraVuelta = true;
@@ -387,8 +373,6 @@ export function sincronizarCola(): Promise<void> {
   return sincronizando;
 }
 
-// Primero se guarda en el teléfono y recién después se intenta subir: así el
-// reporte no se pierde aunque la señal se corte en medio del envío.
 export async function crearReporte(payload: PayloadCrearReporte): Promise<Reporte> {
   const usuario = obtenerUsuario();
   if (!usuario) throw new ErrorServicio("NO_AUTENTICADO", "Iniciá sesión para enviar el reporte.");
@@ -437,7 +421,6 @@ export async function crearReporte(payload: PayloadCrearReporte): Promise<Report
     ultimoError: null,
   });
 
-  // Si la señal es mala no se hace esperar al vecino: la subida sigue sola.
   await Promise.race([
     sincronizarCola().catch(() => undefined),
     new Promise((resolve) => setTimeout(resolve, ESPERA_ENVIO_MS)),

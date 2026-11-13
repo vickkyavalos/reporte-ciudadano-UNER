@@ -20,11 +20,6 @@ const aPunto = (c: { latitude: number; longitude: number }): Coordenadas => ({
   longitud: c.longitude,
 });
 
-/**
- * En Android, react-native-maps usa Google Maps y necesita una API key. Expo Go trae la suya,
- * pero un development build o la app instalada usan la del plugin "react-native-maps" del
- * app.json. Sin key, abrir el mapa cierra la app: por eso se chequea antes de mostrarlo.
- */
 const mapaDisponible =
   Platform.OS !== "android" ||
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
@@ -53,9 +48,6 @@ export function VistaPunto({ punto }: { punto: Coordenadas }) {
     </View>
   );
 }
-
-// Sin señal el mapa puede verse vacío, pero el pin se sigue pudiendo mover:
-// así el vecino puede marcar el punto aunque no tenga GPS ni conexión.
 export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
   const [punto, setPunto] = useState(inicial);
   const red = useNetworkState();

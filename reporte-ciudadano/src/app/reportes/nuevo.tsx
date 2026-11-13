@@ -218,7 +218,7 @@ export default function NuevoReporteScreen() {
       return;
     }
 
-    // Antes de crear uno nuevo se buscan reportes del mismo tipo a menos de 50 m.
+
     if (red.isConnected !== false) {
       setGuardando(true);
       const cercanos = await buscarDuplicados(punto, tipoId);

@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // --- Bloques por rol ---
+  // bloques por rol 
   bloque: {
     marginBottom: 18,
     gap: 10,

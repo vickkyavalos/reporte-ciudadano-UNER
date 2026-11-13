@@ -4,8 +4,6 @@ import type { Reporte } from "@/tipos/reporte.interface";
 export interface EntradaCola {
   reporte: Reporte;
   direccionPendiente: boolean;
-  // Ruta local -> URL devuelta por el servidor, para no volver a subir un
-  // archivo si la conexión se corta a mitad del envío.
   archivosSubidos: Record<string, string>;
   ultimoError: string | null;
 }

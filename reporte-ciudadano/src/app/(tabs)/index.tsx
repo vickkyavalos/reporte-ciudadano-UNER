@@ -12,6 +12,8 @@ import { useUbicacion } from "@/hooks/use-ubicacion";
 import { obtenerReportesCercanos, obtenerTipos, sumarseAReporte } from "@/servicios/reportes";
 import type { Reporte, TipoDeReporte } from "@/tipos/reporte.interface";
 import { useAuth } from "@/providers/AuthProvider";
+import { BotonCerrarSesion } from "@/components/ui/btn-cerrar-sesion";
+
 type Carga = "cargando" | "ok" | "error";
 
 export default function ReportesCercanos() {
@@ -81,14 +83,7 @@ export default function ReportesCercanos() {
       {/* encabezado */}
       <View style={[styles.encabezado, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.titulo}>Reportes Cercanos</Text>
-        <Pressable
-          style={styles.perfil}
-          accessibilityRole="button"
-          accessibilityLabel="Cerrar sesión"
-          onPress={salir}
-        >
-          <Ionicons name="person-outline" size={22} color={COLORES.texto} />
-        </Pressable>
+        <BotonCerrarSesion />
       </View>
 
       {/* Btn */}

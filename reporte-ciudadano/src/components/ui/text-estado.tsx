@@ -2,8 +2,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { ESTADOS } from "@/constants/estados";
 import type { EstadoReporte } from "@/tipos/reporte.interface";
 
-// Mientras el reporte está en la cola del teléfono todavía no tiene estado en
-// el servidor: el foro pidió mostrar "Pendiente de sincronización".
 const PENDIENTE = {
   etiqueta: "Pendiente de sincronización",
   fondo: "#FEF3E2",
