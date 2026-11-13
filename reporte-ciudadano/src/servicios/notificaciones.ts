@@ -1,76 +1,95 @@
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { api } from './api';
 
-// notificaciones cuando la app está abierta en primer plano
-    Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    } as any),
-    });
-    /**
-     * Solicita permisos al usuario y obtiene el token de Expo para las notificaciones push.
-     */
-    export async function registrarParaNotificacionesPushAsync(): Promise<string | null> {
-    let token: string | null = null;
+// Token de Expo de este teléfono, para poder darlo de baja al cerrar sesión.
+const CLAVE_TOKEN_PUSH = 'token_push';
 
-    // Las push notifications físicas 
-    if (!Device.isDevice) {
-        console.warn('Las notificaciones push físicas no funcionan completamente en emuladores.');
-        return null;
-    }
+// Cómo se muestran las notificaciones que llegan con la app abierta.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+/**
+ * Pide permiso, obtiene el token de Expo y lo registra en la API (POST /dispositivos) para que
+ * lleguen los avisos de cambio de estado y de adhesiones. Si algo falla no rompe nada: la app
+ * sigue andando, sólo que sin push.
+ */
+export async function registrarDispositivo(): Promise<string | null> {
+  // Las push sólo llegan a un teléfono real.
+  if (Platform.OS === 'web' || !Device.isDevice) return null;
 
-    // solicita permisos 
-    if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-        console.warn('El usuario denegó los permisos para las notificaciones.');
-        return null;
-    }
-
-    try {
-        // Obtener el token de Expo push
-        const tokenData = await Notifications.getExpoPushTokenAsync();
-        token = tokenData.data;
-    } catch (error) {
-        console.error('Error al obtener el push token:', error);
-    }
-
-    // Configuración obligatoria para Android
+  try {
+    // En Android 13 o más, sin un canal creado ni siquiera aparece el pedido de permiso.
     if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-        name: 'Estado de Reclamos',
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Estado de reclamos',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
-        });
+      });
     }
 
-    return token;
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      ({ status } = await Notifications.requestPermissionsAsync());
+    }
+    if (status !== 'granted') return null;
+
+    // El token de Expo necesita el id del proyecto de EAS (npx eas-cli init lo agrega a app.json).
+    const projectId =
+      Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) {
+      console.warn('[push] Falta el projectId de EAS: corré "npx eas-cli init".');
+      return null;
     }
 
-
-
-    // notificación local en el dispositivo
-    export async function programarNotificacionLocal(
-    titulo: string, 
-    cuerpo: string, 
-    datosExtra?: Record<string, any>
-    ) {
-    await Notifications.scheduleNotificationAsync({
-        content: {
-        title: titulo,
-        body: cuerpo,
-        data: datosExtra || {},
-        },
-        trigger: null, // Se ejecuta inmediatamente
+    const { data: tokenExpo } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await api.post('/dispositivos', {
+      tokenExpo,
+      plataforma: Platform.OS === 'ios' ? 'ios' : 'android',
     });
-    }
+    await SecureStore.setItemAsync(CLAVE_TOKEN_PUSH, tokenExpo);
+    return tokenExpo;
+  } catch (error) {
+    console.warn('[push] No se pudo registrar el teléfono', error);
+    return null;
+  }
+}
+
+/** Da de baja el teléfono (DELETE /dispositivos/:token). Se llama antes de cerrar sesión. */
+export async function darDeBajaDispositivo(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const tokenExpo = await SecureStore.getItemAsync(CLAVE_TOKEN_PUSH);
+  if (!tokenExpo) return;
+  try {
+    await api.delete(`/dispositivos/${encodeURIComponent(tokenExpo)}`);
+  } catch {
+    // Si no hay señal no pasa nada: si otro usuario entra en este teléfono, el token pasa a él.
+  }
+  await SecureStore.deleteItemAsync(CLAVE_TOKEN_PUSH);
+}
+
+// notificación local en el dispositivo
+export async function programarNotificacionLocal(
+  titulo: string,
+  cuerpo: string,
+  datosExtra?: Record<string, unknown>,
+) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: titulo,
+      body: cuerpo,
+      data: datosExtra || {},
+    },
+    trigger: null, // Se ejecuta inmediatamente
+  });
+}

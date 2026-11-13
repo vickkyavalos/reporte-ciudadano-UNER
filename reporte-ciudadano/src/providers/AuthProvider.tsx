@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onSesionExpirada } from "../servicios/clienteService";
 import * as auth from '../servicios/authService';
+import { darDeBajaDispositivo, registrarDispositivo } from '../servicios/notificaciones';
 import type { Usuario } from '../tipos/usuario.interface';
 
 type Ctx = {
@@ -31,6 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Con sesión (ingreso, huella o sesión guardada) se registra el teléfono para recibir push.
+  const usuarioId = usuario?.id;
+  useEffect(() => {
+    if (usuarioId) void registrarDispositivo();
+  }, [usuarioId]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -47,6 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return true;
         },
         salir: async () => {
+          // Primero la baja del teléfono: después de cerrar sesión ya no hay token para pedirla.
+          await darDeBajaDispositivo();
           await auth.cerrarSesion();
           setUsuario(null);
         },

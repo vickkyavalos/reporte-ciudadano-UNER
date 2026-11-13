@@ -3,10 +3,12 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { TemaProvider } from '@/providers/ThemeProvider';
 import { useSincronizacionCola } from '@/hooks/use-sincronizacion-cola';
+import { useAbrirNotificacion } from '@/hooks/use-abrir-notificacion';
 
 function Rutas() {
   const { usuario, cargando } = useAuth();
   useSincronizacionCola(!!usuario);
+  useAbrirNotificacion(!cargando && !!usuario);
 
   if (cargando) return null;
 
