@@ -1,5 +1,8 @@
 import { api } from "@/servicios/api";
-import { abrirArchivoLocal } from "@/servicios/archivosLocales";
+import {
+  abrirArchivoLocal,
+  LIMITE_FOTO_BYTES,
+} from "@/servicios/archivosLocales";
 import type { CambioDeEstado } from "@/tipos/cambioDeEstado";
 import type { Cuadrilla } from "@/tipos/cuadrilla.interface";
 import type {
@@ -24,6 +27,7 @@ type RespuestaUno<T> = { datos: T; meta: null };
 type ArchivoSubido = { url: string };
 
 const POR_PAGINA = 100;
+const TIMEOUT_SUBIDA_ARCHIVO_MS = 60_000;
 const ESTADOS_REPORTE = "recibido,en_revision,asignado,resuelto,rechazado";
 const ESTADOS_ABIERTOS = new Set<EstadoReporte>([
   "recibido",
@@ -86,6 +90,9 @@ function desdeReporte(
   if (!zona) {
     throw new Error(`No encontramos la zona ${reporte.zonaId}.`);
   }
+  const fotosArreglo = reporte.fotos
+    .filter((foto) => foto.momento === "arreglo")
+    .map((foto) => foto.url);
 
   return {
     id: reporte.id,
@@ -101,8 +108,8 @@ function desdeReporte(
     cuadrillaId: reporte.cuadrillaId,
     fotoProblema:
       reporte.fotos.find((foto) => foto.momento === "problema")?.url ?? null,
-    fotoArreglo:
-      reporte.fotos.find((foto) => foto.momento === "arreglo")?.url ?? null,
+    fotoArreglo: fotosArreglo[0] ?? null,
+    fotosArreglo,
     duplicadoDe: reporte.duplicadoDe,
     historial,
   };
@@ -196,11 +203,16 @@ export async function buscarDetalleOperadorPorQr(
 }
 
 async function subirFotoArreglo(uri: string): Promise<string> {
+  const archivo = abrirArchivoLocal(uri);
+  if (archivo.size > LIMITE_FOTO_BYTES) {
+    throw new Error("Cada foto del arreglo puede pesar hasta 5 MB. Elegí una más liviana.");
+  }
   const formData = new FormData();
-  formData.append("archivo", abrirArchivoLocal(uri));
+  formData.append("archivo", archivo);
   const { data } = await api.post<RespuestaUno<ArchivoSubido>>(
     "/archivos",
     formData,
+    { timeout: TIMEOUT_SUBIDA_ARCHIVO_MS, adapter: "fetch" },
   );
   return data.datos.url;
 }
@@ -213,7 +225,7 @@ export async function guardarCambiosDetalleOperador(
   if (!comentario) {
     throw new Error("Escribí el motivo de los cambios.");
   }
-  if (cambios.estado === "resuelto" && !cambios.fotoArreglo) {
+  if (cambios.estado === "resuelto" && cambios.fotosArreglo.length === 0) {
     throw new Error("Adjuntá una foto del arreglo antes de cerrar el reclamo como resuelto.");
   }
   if (cambios.duplicadoDe === reclamoId) {
@@ -237,18 +249,38 @@ export async function guardarCambiosDetalleOperador(
     return obtenerDetalleOperador(reclamoId);
   }
 
-  const fotoArregloActual =
-    actual.fotos.find((foto) => foto.momento === "arreglo")?.url ?? null;
-  const fotoNueva =
-    cambios.fotoArreglo && cambios.fotoArreglo !== fotoArregloActual
-      ? await subirFotoArreglo(cambios.fotoArreglo)
-      : null;
-
+  const fotosArregloActual = actual.fotos.filter(
+    (foto) => foto.momento === "arreglo",
+  );
+  const fotosNuevasLocales = cambios.fotosArreglo.filter(
+    (uri) => !fotosArregloActual.some((foto) => foto.url === uri),
+  );
+  if (fotosArregloActual.length + fotosNuevasLocales.length > 3) {
+    throw new Error("Se pueden subir hasta tres fotos del arreglo.");
+  }
   let estado = actual.estado;
   const pasaAAsignado = cambios.estado === "asignado" && estado !== "asignado";
   const cambiaCuadrilla =
     cambios.cuadrillaId &&
     (cambios.cuadrillaId !== actual.cuadrillaId || pasaAAsignado);
+  const estadoFinalPrevisto =
+    cambiaCuadrilla && cambios.estado === actual.estado
+      ? "asignado"
+      : cambios.estado === "asignado" && !cambiaCuadrilla
+        ? actual.estado
+        : cambios.estado;
+  if (
+    fotosNuevasLocales.length > 0 &&
+    estadoFinalPrevisto !== "asignado" &&
+    estadoFinalPrevisto !== "resuelto"
+  ) {
+    throw new Error("Las fotos del arreglo solo se pueden subir con el reclamo asignado o resuelto.");
+  }
+  const fotosSubidas: string[] = [];
+  for (const uri of fotosNuevasLocales) {
+    fotosSubidas.push(await subirFotoArreglo(uri));
+  }
+
   if (cambiaCuadrilla && estado === "recibido") {
     await api.patch(`${rutaReporte}/estado`, {
       estado: "en_revision",
@@ -263,14 +295,14 @@ export async function guardarCambiosDetalleOperador(
     });
     estado = "asignado";
   }
-  if (cambios.estado !== estado) {
+  if (cambios.estado !== estado && cambios.estado !== actual.estado) {
     await api.patch(`${rutaReporte}/estado`, {
       estado: cambios.estado,
       comentario,
     });
   }
-  if (fotoNueva) {
-    await api.post(`${rutaReporte}/fotos`, { url: fotoNueva });
+  for (const url of fotosSubidas) {
+    await api.post(`${rutaReporte}/fotos`, { url });
   }
 
   return obtenerDetalleOperador(reclamoId);
