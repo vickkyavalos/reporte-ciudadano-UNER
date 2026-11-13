@@ -138,7 +138,7 @@ export default function NuevoReporteScreen() {
     return () => {
       vigente = false;
     };
-  }, [clavePunto]);
+  }, [clavePunto, punto]);
 
   const asegurarPermisoCamara = async (): Promise<boolean> => {
     const permiso = permisoCamara?.granted ? permisoCamara : await pedirPermisoCamara();

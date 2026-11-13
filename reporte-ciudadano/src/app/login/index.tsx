@@ -19,8 +19,7 @@ export default function LoginScreen() {
 
 	const [identifier, setIdentifier] = useState('');
 	const [password, setPassword] = useState('');
-	// const [passwordVisible, setPasswordVisible] = useState(false);
-	const [passwordVisible, setPasswordVisible] = useState(true);
+	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [cargando, setCargando] = useState(false);
 

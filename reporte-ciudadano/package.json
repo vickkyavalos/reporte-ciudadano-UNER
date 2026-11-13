@@ -5,7 +5,6 @@
   "dependencies": {
     "@expo/ui": "~57.0.23",
     "@react-native-vector-icons/ionicons": "^13.1.4",
-    "@types/react": "~19.2.4",
     "axios": "^1.21.1",
     "expo": "~57.0.24",
     "expo-asset": "~57.0.21",
@@ -43,8 +42,7 @@
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
     "react-native-webview": "13.16.1",
-    "react-native-worklets": "0.10.1",
-    "typescript": "~6.0.3"
+    "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
