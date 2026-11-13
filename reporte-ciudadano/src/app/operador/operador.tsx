@@ -11,7 +11,8 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ESTADOS } from "@/constants/estados";
+import Ionicons from "@react-native-vector-icons/ionicons";
+import { COLORES, ESTADOS } from "@/constants/estados";
 import { useAuth } from "@/providers/AuthProvider";
 import { obtenerReclamosOperador } from "@/servicios/operadorService";
 import { buscarDetalleOperadorPorQr } from "@/servicios/detalleOperadorService";
@@ -68,7 +69,7 @@ export default function OperadorScreen() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoOperador>("todos");
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
   const [filtroZona, setFiltroZona] = useState<string | null>(null);
-  const [orden, setOrden] = useState<OrdenBandejaOperador>("recientes");
+  const [orden, setOrden] = useState<OrdenBandejaOperador>("adhesiones");
   const [pagina, setPagina] = useState(0);
   const [campoAbierto, setCampoAbierto] = useState<CampoFiltroOperador | null>(null);
   const [escanerAbierto, setEscanerAbierto] = useState(false);
@@ -100,6 +101,7 @@ export default function OperadorScreen() {
     try {
       const reclamo = await buscarDetalleOperadorPorQr(valor);
       setEscanerAbierto(false);
+      qrEnProceso.current = false;
       router.push({
         pathname: "/operador/detalle_operador",
         params: { id: reclamo.id },
@@ -126,11 +128,14 @@ export default function OperadorScreen() {
         (filtroTipo === null || reclamo.tipo === filtroTipo) &&
         (filtroZona === null || reclamo.zona === filtroZona)
     );
-    return filtrados.sort((a, b) =>
-      orden === "recientes"
+    return filtrados.sort((a, b) => {
+      if (orden === "adhesiones") {
+        return b.adhesiones - a.adhesiones || a.creadoEn.localeCompare(b.creadoEn);
+      }
+      return orden === "recientes"
         ? b.creadoEn.localeCompare(a.creadoEn)
-        : a.creadoEn.localeCompare(b.creadoEn)
-    );
+        : a.creadoEn.localeCompare(b.creadoEn);
+    });
   }, [filtroEstado, filtroTipo, filtroZona, orden, reclamos]);
 
   const totalPaginas = Math.max(1, Math.ceil(reclamosFiltrados.length / RECLAMOS_POR_PAGINA));
@@ -229,7 +234,7 @@ export default function OperadorScreen() {
             onPress={salir}
             style={styles.profileButton}
           >
-            <Text style={styles.profileIcon}>•</Text>
+            <Ionicons name="person-outline" size={22} color={COLORES.texto} />
           </Pressable>
         </View>
       </View>
@@ -254,15 +259,26 @@ export default function OperadorScreen() {
           <Text style={styles.count}>{reclamosFiltrados.length} reclamos</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Ordenar por ${orden === "recientes" ? "más antiguos" : "más recientes"}`}
+            accessibilityLabel={`Ordenar por ${orden === "adhesiones" ? "más recientes" : orden === "recientes" ? "más antiguos" : "más adhesiones"}`}
             onPress={() => {
               setPagina(0);
-              setOrden((actual) => (actual === "recientes" ? "antiguos" : "recientes"));
+              setOrden((actual) =>
+                actual === "adhesiones"
+                  ? "recientes"
+                  : actual === "recientes"
+                    ? "antiguos"
+                    : "adhesiones",
+              );
             }}
             style={styles.sortButton}
           >
             <Text style={styles.sortText}>
-              {orden === "recientes" ? "Más recientes" : "Más antiguos"} ↓
+              {orden === "adhesiones"
+                ? "Más adhesiones"
+                : orden === "recientes"
+                  ? "Más recientes"
+                  : "Más antiguos"}{" "}
+              {orden === "antiguos" ? "↑" : "↓"}
             </Text>
           </Pressable>
         </View>
@@ -424,7 +440,6 @@ const styles = StyleSheet.create({
     width: 32, height: 32, alignItems: "center", justifyContent: "center",
     borderRadius: 16, backgroundColor: "#F2F3F5", borderWidth: 1, borderColor: "#E5E7EB",
   },
-  profileIcon: { color: "#526071", fontSize: 18, lineHeight: 22 },
   filters: { flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 },
   filterButton: {
     height: 38, flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center",

@@ -14,4 +14,4 @@ export interface ReclamoOperador {
 
 export type FiltroEstadoOperador = EstadoReporte | "todos";
 export type CampoFiltroOperador = "estado" | "tipo" | "zona";
-export type OrdenBandejaOperador = "recientes" | "antiguos";
+export type OrdenBandejaOperador = "adhesiones" | "recientes" | "antiguos";

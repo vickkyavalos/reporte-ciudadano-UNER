@@ -27,9 +27,23 @@ api.interceptors.response.use(
 		return res;
 	},
 	(err) => {
-		console.log('Error de red:', err.message, err.code, err.config?.baseURL);
+		console.log(
+			'Error de API:',
+			err.message,
+			err.code,
+			'HTTP',
+			err.response?.status,
+			err.config?.url,
+		);
 		const e = err.response?.data?.error;
 		if (e) throw new ErrorApi(e.codigo, e.mensaje, err.response?.status);
+		if (err.response) {
+			throw new ErrorApi(
+				'ERROR_HTTP',
+				`La API respondió con un error HTTP ${err.response.status}.`,
+				err.response.status,
+			);
+		}
 		throw new ErrorApi('SIN_CONEXION', 'No pudimos conectarnos. Revise su conexión.');
 	}
 );
