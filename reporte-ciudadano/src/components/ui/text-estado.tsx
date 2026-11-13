@@ -2,8 +2,17 @@ import { StyleSheet, Text, View } from "react-native";
 import { ESTADOS } from "@/constants/estados";
 import type { EstadoReporte } from "@/tipos/reporte.interface";
 
-export function EstadoBadge({ estado }: { estado: EstadoReporte }) {
-  const e = ESTADOS[estado];
+// Mientras el reporte está en la cola del teléfono todavía no tiene estado en
+// el servidor: el foro pidió mostrar "Pendiente de sincronización".
+const PENDIENTE = {
+  etiqueta: "Pendiente de sincronización",
+  fondo: "#FEF3E2",
+  texto: "#B45309",
+  borde: "#F5C27A",
+};
+
+export function EstadoBadge({ estado, pendiente = false }: { estado: EstadoReporte; pendiente?: boolean }) {
+  const e = pendiente ? PENDIENTE : ESTADOS[estado];
   return (
     <View style={[styles.badge, { backgroundColor: e.fondo, borderColor: e.borde }]}>
       <Text style={[styles.texto, { color: e.texto }]}>{e.etiqueta}</Text>
