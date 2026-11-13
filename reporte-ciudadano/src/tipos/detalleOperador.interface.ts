@@ -8,11 +8,14 @@ export interface DetalleReclamoOperador extends ReclamoOperador {
   cuadrillaId: string | null;
   fotoProblema: string | null;
   fotoArreglo: string | null;
+  fotosArreglo?: string[];
   duplicadoDe: string | null;
   historial: CambioDeEstado[];
 }
 
-export type CambiosDetalleOperador = CambiosOperadorReporte;
+export type CambiosDetalleOperador = Omit<CambiosOperadorReporte, "fotoArreglo"> & {
+  fotosArreglo: string[];
+};
 
 export interface CatalogosDetalleOperador {
   cuadrillas: Cuadrilla[];
