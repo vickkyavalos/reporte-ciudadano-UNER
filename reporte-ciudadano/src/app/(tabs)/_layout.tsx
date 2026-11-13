@@ -1,10 +1,5 @@
 import { Tabs, Redirect } from 'expo-router';
 import Ionicons from '@react-native-vector-icons/ionicons';
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 1f4af659bdda021878d4f85c69ade9f06ded0622
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function TabsLayout() {
@@ -32,13 +27,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" color={color} size={size} />
           ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="operador"
-        options={{
-          href: null, 
         }}
       />
     </Tabs>
