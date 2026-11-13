@@ -33,7 +33,7 @@ export function TarjetaMiReporte({
 
         <View style={styles.inferior}>
             <Text style={styles.fecha}>{fecha}</Text>
-            <EstadoBadge estado={reporte.estado} pendiente={!reporte.sincronizado} />
+            <EstadoBadge estado={reporte.estado} />
         </View>
         </View>
 

@@ -10,7 +10,8 @@ import { PanelInferior } from "@/components/ui/barra-inicio";
 import { COLORES } from "@/constants/estados";
 import { useUbicacion } from "@/hooks/use-ubicacion";
 import { obtenerReportesCercanos, obtenerTipos, sumarseAReporte } from "@/servicios/reportes";
-import type { Reporte, TipoDeReporte } from "@/tipos/reporte.interface";
+import type { Reporte } from "@/tipos/reporte.interface";
+import type { TipoDeReporte } from "@/tipos/reporte.interface";
 import { useAuth } from "@/providers/AuthProvider";
 type Carga = "cargando" | "ok" | "error";
 
@@ -27,7 +28,7 @@ export default function ReportesCercanos() {
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [sumados, setSumados] = useState<Set<string>>(new Set());
   const [sumando, setSumando] = useState<string | null>(null);
-  const [altoPanel] = useState(() => new Animated.Value(0));
+  const altoPanel = useRef(new Animated.Value(0)).current;
   const lista = useRef<FlatList<Reporte>>(null);
 
   const cargar = useCallback(async () => {
@@ -43,8 +44,8 @@ export default function ReportesCercanos() {
     }
   }, [ubicacion]);
 
-    useEffect(() => {
-    void Promise.resolve().then(cargar);
+  useEffect(() => {
+    cargar();
   }, [cargar]);
 
   const sumarme = async (id: string) => {

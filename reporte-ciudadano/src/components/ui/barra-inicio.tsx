@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Animated, Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { COLORES } from "@/constants/estados";
 
@@ -13,10 +13,11 @@ export function PanelInferior({ children, alto }: Props) {
   const { height } = useWindowDimensions();
   const [expandido, setExpandido] = useState(true);
   const altoExpandido = Math.round(height * 0.5);
-
-  useEffect(() => {
+  const inicializado = useRef(false);
+  if (!inicializado.current) {
     alto.setValue(altoExpandido);
-  }, [alto, altoExpandido]);
+    inicializado.current = true;
+  }
 
   const alternar = () => {
     const destino = expandido ? ALTO_COLAPSADO : altoExpandido;

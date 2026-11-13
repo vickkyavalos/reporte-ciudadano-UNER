@@ -1,7 +1,7 @@
 import * as Network from "expo-network";
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
-import { precargarCatalogos, sincronizarCola } from "@/servicios/reportes";
+import { sincronizarCola } from "@/servicios/reportes";
 
 const INTERVALO_MS = 60000;
 
@@ -13,14 +13,9 @@ export function useSincronizacionCola(activa: boolean) {
       sincronizarCola().catch((error) => console.warn("[cola] no se pudo sincronizar", error));
     };
 
-    const conSenal = () => {
-      void precargarCatalogos();
-      sincronizar();
-    };
-
-    conSenal();
+    sincronizar();
     const red = Network.addNetworkStateListener(({ isConnected }) => {
-      if (isConnected) conSenal();
+      if (isConnected) sincronizar();
     });
     const app = AppState.addEventListener("change", (estado) => {
       if (estado === "active") sincronizar();

@@ -118,11 +118,11 @@ export default function DetalleReporte() {
           </Text>
 
           <View style={styles.estado}>
-            <EstadoBadge estado={reporte.estado} pendiente={!reporte.sincronizado} />
+            <EstadoBadge estado={reporte.estado} />
           </View>
 
-          {/* VECINO AUTOR: el QR sólo sirve con el código definitivo del servidor */}
-          {esVecino && esAutor && reporte.sincronizado && (
+          {/* VECINO AUTOR*/}
+          {esVecino && esAutor && (
             <View style={styles.bloque}>
               <Pressable
                 style={styles.boton}

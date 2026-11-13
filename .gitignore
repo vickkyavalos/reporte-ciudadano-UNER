@@ -143,6 +143,3 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
-
-# Archivos locales de Expo (cada maquina genera los suyos)
-.expo/
