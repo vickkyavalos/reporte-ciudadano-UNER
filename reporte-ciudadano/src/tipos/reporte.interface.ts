@@ -50,8 +50,7 @@ export interface TipoDeReporte {
     areaResponsable: string;
 }
 
-// Tipo auxiliar para lo que envía la app móvil al crear
 export type PayloadCrearReporte = Pick<Reporte, 'tipoId' | 'descripcion' | 'audioUrl' | 'coordenadas' | 'direccion'> & {
-    fotosUris: string[]; // <-- Ahora acepta múltiples fotos
-    direccionPendiente: boolean; // true si no se pudo averiguar la calle (sin señal)
+    fotosUris: string[]; 
+    direccionPendiente: boolean; 
 };

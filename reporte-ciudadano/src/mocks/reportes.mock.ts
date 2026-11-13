@@ -6,7 +6,7 @@ export const REPORTES_MOCK: Reporte[] = [
   {
     id: "rep-00412", codigo: "GCHU-2026-00412", tipoId: "tip-bache",
     descripcion: "Pozo grande en la mano hacia el centro, pasa el agua.",
-    audioUrl: null, // caso feo: sin audio
+    audioUrl: null, 
     fotos: [{ id: "fot-901", url: "https://api.gchu.gob.ar/f/901.jpg", momento: "problema" }],
     coordenadas: { latitud: -33.0089, longitud: -58.5142 },
     direccion: "Av. San Martín 1240", zonaId: "zon-norte", estado: "asignado",

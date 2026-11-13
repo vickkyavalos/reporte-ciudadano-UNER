@@ -1,7 +1,6 @@
 import * as Location from "expo-location";
 import type { Coordenadas } from "@/tipos/reporte.interface";
 
-// Necesita conexión: sin señal devuelve null y se reintenta al subir el reporte.
 export async function direccionDePunto(punto: Coordenadas): Promise<string | null> {
   try {
     const [lugar] = await Location.reverseGeocodeAsync({

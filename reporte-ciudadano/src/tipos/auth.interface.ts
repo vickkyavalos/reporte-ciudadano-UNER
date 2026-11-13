@@ -1,5 +1,5 @@
 export interface LoginRequest {
-  email: string; // Puede ser DNI o Email según lo maneje tu backend
+  email: string; 
   password: string;
 }
 
