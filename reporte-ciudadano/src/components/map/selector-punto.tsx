@@ -1,8 +1,6 @@
-import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useNetworkState } from "expo-network";
 import { useMemo, useState } from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { COLORES } from "@/constants/estados";
@@ -13,24 +11,6 @@ interface Props {
   onConfirmar: (punto: Coordenadas) => void;
   onCerrar: () => void;
 }
-
-const DELTA = 0.003;
-
-const aPunto = (c: { latitude: number; longitude: number }): Coordenadas => ({
-  latitud: c.latitude,
-  longitud: c.longitude,
-});
-
-const mapaNativoDisponible =
-  Platform.OS !== "android" ||
-  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
-  (Constants.expoConfig?.plugins ?? []).some(
-    (plugin) =>
-      Array.isArray(plugin) &&
-      plugin[0] === "react-native-maps" &&
-      Boolean((plugin[1] as { androidGoogleMapsApiKey?: string } | undefined)?.androidGoogleMapsApiKey),
-  );
-
 
 const crearHtml = (punto: Coordenadas, interactivo: boolean) => `
 <!DOCTYPE html>
@@ -114,7 +94,7 @@ function MapaLeaflet({
         onPunto?.({ latitud, longitud });
       }
     } catch {
-    
+  
     }
   };
 
@@ -133,32 +113,13 @@ function MapaLeaflet({
   );
 }
 
-
 export function VistaPunto({ punto }: { punto: Coordenadas }) {
-  if (!mapaNativoDisponible) {
-    return (
-      <View style={styles.vista} pointerEvents="none" accessibilityLabel="Mapa con el punto del problema">
-        <MapaLeaflet punto={punto} interactivo={false} />
-      </View>
-    );
-  }
-  const posicion = { latitude: punto.latitud, longitude: punto.longitud };
   return (
     <View style={styles.vista} pointerEvents="none" accessibilityLabel="Mapa con el punto del problema">
-      <MapView
-        style={styles.mapa}
-        region={{ ...posicion, latitudeDelta: DELTA, longitudeDelta: DELTA }}
-        scrollEnabled={false}
-        zoomEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
-      >
-        <Marker coordinate={posicion} />
-      </MapView>
+      <MapaLeaflet punto={punto} interactivo={false} />
     </View>
   );
 }
-
 
 export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
   const [punto, setPunto] = useState(inicial);
@@ -168,26 +129,7 @@ export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
   return (
     <Modal animationType="slide" onRequestClose={onCerrar}>
       <View style={styles.contenedor}>
-        {mapaNativoDisponible ? (
-          <MapView
-            style={styles.mapa}
-            initialRegion={{
-              latitude: inicial.latitud,
-              longitude: inicial.longitud,
-              latitudeDelta: DELTA,
-              longitudeDelta: DELTA,
-            }}
-            onPress={(evento) => setPunto(aPunto(evento.nativeEvent.coordinate))}
-          >
-            <Marker
-              draggable
-              coordinate={{ latitude: punto.latitud, longitude: punto.longitud }}
-              onDragEnd={(evento) => setPunto(aPunto(evento.nativeEvent.coordinate))}
-            />
-          </MapView>
-        ) : (
-          <MapaLeaflet punto={inicial} interactivo onPunto={setPunto} />
-        )}
+        <MapaLeaflet punto={inicial} interactivo onPunto={setPunto} />
 
         <View style={[styles.ayuda, { top: margenes.top + 12 }]}>
           <Text style={styles.ayudaTexto}>
