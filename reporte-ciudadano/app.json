@@ -34,7 +34,14 @@
           "imageWidth": 220
         }
       ],
-      "expo-sqlite",
+      [
+        "expo-sqlite",
+        {
+          "android": {
+            "enableFTS": true
+          }
+        }
+      ],
       "expo-secure-store",
       [
         "expo-audio",
