@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@react-native-vector-icons/ionicons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ESTADOS } from "@/constants/estados";
 import {
@@ -110,9 +110,11 @@ export default function DetalleOperadorScreen() {
     }
   }, [reclamoId]);
 
-  useEffect(() => {
-    void Promise.resolve().then(cargarDetalle);
-  }, [cargarDetalle]);
+  useFocusEffect(
+    useCallback(() => {
+      void Promise.resolve().then(cargarDetalle);
+    }, [cargarDetalle]),
+  );
 
   const reporteDuplicado = useMemo(
     () => catalogos.reportes.find((reporte) => reporte.id === duplicadoSeleccionado) ?? null,
@@ -382,31 +384,12 @@ export default function DetalleOperadorScreen() {
             </>
           )}
 
-            {detalle.descripcion && (
-            <>
-              <Text style={styles.fieldLabel}>Descripción del vecino</Text>
-              <Text style={styles.description}>{detalle.descripcion}</Text>
-            </>
-          )}
-
           {detalle.audioUrl && (
             <>
               <Text style={styles.fieldLabel}>Nota de voz del vecino</Text>
-              <ReproductorAudio uri={detalle.audioUrl} />
+              <ReproductorAudio key={detalle.audioUrl} uri={detalle.audioUrl} />
             </>
           )}
-
-          {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
-
-
-
-
-
-
-
-
-
-
 
           {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
         </View>
