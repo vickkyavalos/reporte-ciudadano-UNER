@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "reporte-ciudadano",
+    "name": "Reporte Ciudadano",
     "slug": "reporte-ciudadano",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,11 +8,13 @@
     "scheme": "reporteciudadano",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.uner.reporteciudadano"
     },
     "android": {
+      "package": "com.uner.reporteciudadano",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#C1440E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,9 +30,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#C1440E",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 160
         }
       ],
       "expo-sqlite",
@@ -38,7 +40,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Usamos el micrófono para que puedas contar el problema con una nota de voz."
+          "microphonePermission": "Usamos el micrófono para que puedas contar el problema con una nota de voz.",
+          "enableBackgroundPlayback": false
         }
       ],
       [
@@ -64,17 +67,18 @@
         }
       ],
       "expo-asset",
-      "expo-notifications",
-      [
-        "react-native-maps",
-        {
-          "androidGoogleMapsApiKey": "AIzaSyCR1GVpJfxbX48kqId5mfnSmIOuWl9d5yQ"
-        }
-      ]
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1b1589ba-569a-46c3-915c-6478a468d70b"
+      }
+    },
+    "owner": "proyectouner"
   }
 }
