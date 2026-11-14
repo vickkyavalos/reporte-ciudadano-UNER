@@ -1,3 +1,4 @@
+import { hayInternet } from "@/servicios/red";
 import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
 import {
@@ -219,7 +220,7 @@ export default function NuevoReporteScreen() {
     }
 
 
-    if (red.isConnected !== false) {
+    if (hayInternet(red)) {
       setGuardando(true);
       const cercanos = await buscarDuplicados(punto, tipoId);
       setGuardando(false);
@@ -399,7 +400,7 @@ export default function NuevoReporteScreen() {
         <NotaDeVoz uri={audioUri} onCambiar={setAudioUri} onGrabando={setGrabandoAudio} />
       </ScrollView>
 
-      {red.isConnected === false && (
+      {!hayInternet(red) && (
         <View style={styles.sinSenal}>
           <Icon name="cloud-offline-outline" size={24} color="#FFFFFF" />
           <Text style={styles.sinSenalTexto}>Sin señal. Tu reporte se guarda y se sube solo.</Text>

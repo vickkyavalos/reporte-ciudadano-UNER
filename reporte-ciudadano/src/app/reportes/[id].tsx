@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import Ionicons from "@react-native-vector-icons/ionicons";
 
 import { useAuth } from "@/providers/AuthProvider";
@@ -39,51 +39,49 @@ export default function DetalleReporte() {
   const esVecino = usuario?.rol === "vecino";
   const esAutor = !!reporte && reporte.autorId === usuario?.id;
 
-  useEffect(() => {
-    let activo = true;
+  useFocusEffect(
+    useCallback(() => {
+      let activo = true;
 
-    async function cargarDetalle() {
-      try {
-        setCargando(true);
-        setError("");
+      async function cargarDetalle() {
+        try {
+          setCargando(true);
+          setError("");
 
-        const [resultado, listaTipos] = await Promise.all([
-          obtenerReportePorId(id),
-          obtenerTipos(),
-        ]);
+          const [resultado, listaTipos] = await Promise.all([
+            obtenerReportePorId(id),
+            obtenerTipos(),
+          ]);
 
-        if (activo) {
-          setReporte(resultado);
-          setTipos(listaTipos);
+          if (activo) {
+            setReporte(resultado);
+            setTipos(listaTipos);
+          }
+        } catch (e) {
+          if (activo) {
+            setError(
+              e instanceof Error
+                ? e.message
+                : "No se pudo cargar el detalle del reclamo."
+            );
+          }
+        } finally {
+          if (activo) setCargando(false);
         }
-      } catch (e) {
-        if (activo) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : "No se pudo cargar el detalle del reclamo."
-          );
-        }
-      } finally {
-        if (activo) setCargando(false);
       }
-    }
 
-    if (id) {
-      cargarDetalle();
-    } else {
-      void Promise.resolve().then(() => {
-        if (activo) {
-          setError("No se recibió el identificador del reclamo.");
-          setCargando(false);
-        }
-      });
-    }
+      if (id) {
+        void Promise.resolve().then(cargarDetalle);
+      } else {
+        setError("No se recibió el identificador del reclamo.");
+        setCargando(false);
+      }
 
-    return () => {
-      activo = false;
-    };
-  }, [id]);
+      return () => {
+        activo = false;
+      };
+    }, [id]),
+  );
 
   const tipo = tipos.find((item) => item.id === reporte?.tipoId);
   const foto =
@@ -215,7 +213,7 @@ export default function DetalleReporte() {
           {reporte.audioUrl && (
             <View style={styles.bloque}>
               <Text style={styles.etiqueta}>Nota de voz</Text>
-              <ReproductorAudio uri={reporte.audioUrl} />
+              <ReproductorAudio key={reporte.audioUrl} uri={reporte.audioUrl} />
             </View>
           )}
 

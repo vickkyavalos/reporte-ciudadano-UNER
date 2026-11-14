@@ -39,11 +39,8 @@ export function useUbicacion({
 
     (async () => {
       try {
-        const servicios = await Location.hasServicesEnabledAsync();
-        console.log("[ubicacion] GPS del sistema activado:", servicios);
 
         const { status } = await Location.requestForegroundPermissionsAsync();
-        console.log("[ubicacion] permiso:", status);
         if (!activo) return;
         if (status !== "granted") {
           setPermitido(false);
@@ -53,7 +50,6 @@ export function useUbicacion({
         setPermitido(true);
 
         const ultima = await Location.getLastKnownPositionAsync({ maxAge: edadMaximaMs });
-        console.log("[ubicacion] última conocida:", ultima?.coords);
         if (activo && ultima) guardar(ultima);
 
         if (precisionInicial !== undefined) {
@@ -65,14 +61,12 @@ export function useUbicacion({
         }
 
         const actual = await pedirPosicion(precision);
-        console.log("[ubicacion] actual:", actual.coords);
         llegoLaPrecisa = true;
         if (activo) {
           guardar(actual);
           setPrecisa(true);
         }
       } catch (e) {
-        console.log("[ubicacion] ERROR:", e);
         if (activo) setError(e instanceof Error ? e.message : String(e));
       }
     })();

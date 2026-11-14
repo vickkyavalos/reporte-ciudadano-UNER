@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import Icon from "@react-native-vector-icons/ionicons";
 import {
   RecordingPresets,
@@ -31,6 +32,15 @@ export function NotaDeVoz({ uri, onCambiar, onGrabando }: Props) {
   const reproductor = useAudioPlayer(uri ? { uri } : null);
   const reproduccion = useAudioPlayerStatus(reproductor);
 
+  const prepararReproduccion = useCallback(async () => {
+    await setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+      shouldRouteThroughEarpiece: false,
+      interruptionMode: "doNotMix",
+    });
+  }, []);
+
   const empezar = async () => {
     try {
       const permiso = await requestRecordingPermissionsAsync();
@@ -45,7 +55,11 @@ export function NotaDeVoz({ uri, onCambiar, onGrabando }: Props) {
         );
         return;
       }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+      });
       await grabador.prepareToRecordAsync();
       grabador.record();
       onGrabando(true);
@@ -57,8 +71,15 @@ export function NotaDeVoz({ uri, onCambiar, onGrabando }: Props) {
   const terminar = async () => {
     try {
       await grabador.stop();
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-      if (grabador.uri) onCambiar(await guardarArchivoLocal(grabador.uri, "aud", "m4a"));
+      const uriGrabacion = grabador.uri;
+      if (!uriGrabacion) {
+        Alert.alert(
+          "No se pudo guardar la grabación",
+          "La grabación no generó un archivo. Probá de nuevo o escribí el problema.",
+        );
+        return;
+      }
+      onCambiar(await guardarArchivoLocal(uriGrabacion, "aud", "m4a"));
     } catch {
       Alert.alert("No se pudo guardar la grabación", "Probá de nuevo o escribí el problema.");
     } finally {
@@ -66,15 +87,20 @@ export function NotaDeVoz({ uri, onCambiar, onGrabando }: Props) {
     }
   };
 
-  const alternarReproduccion = () => {
+  const alternarReproduccion = async () => {
     if (reproduccion.playing) {
       reproductor.pause();
       return;
     }
-    if (reproduccion.didJustFinish || reproduccion.currentTime >= reproduccion.duration) {
-      void reproductor.seekTo(0);
+    try {
+      await prepararReproduccion();
+      if (reproduccion.didJustFinish || reproduccion.currentTime >= reproduccion.duration) {
+        await reproductor.seekTo(0);
+      }
+      reproductor.play();
+    } catch {
+      Alert.alert("No se pudo reproducir", "Volvé a intentarlo.");
     }
-    reproductor.play();
   };
 
   const borrar = () => {
@@ -86,12 +112,25 @@ export function NotaDeVoz({ uri, onCambiar, onGrabando }: Props) {
     return (
       <View style={styles.fila}>
         <Pressable
-          style={[styles.boton, styles.flexible]}
+          style={[
+            styles.boton,
+            styles.flexible,
+            (!reproduccion.isLoaded || reproduccion.error) && styles.deshabilitado,
+          ]}
           onPress={alternarReproduccion}
+          disabled={!reproduccion.isLoaded || !!reproduccion.error}
           accessibilityRole="button"
         >
           <Icon name={reproduccion.playing ? "pause" : "play"} size={28} color={COLORES.texto} />
-          <Text style={styles.botonTexto}>{reproduccion.playing ? "Pausar" : "Escuchar audio"}</Text>
+          <Text style={styles.botonTexto}>
+            {reproduccion.error
+              ? "Audio no disponible"
+              : !reproduccion.isLoaded
+                ? "Cargando audio..."
+                : reproduccion.playing
+                  ? "Pausar"
+                  : "Escuchar audio"}
+          </Text>
         </Pressable>
         <Pressable
           style={styles.borrar}
@@ -143,6 +182,7 @@ const styles = StyleSheet.create({
   botonTexto: { fontSize: 18, fontWeight: "600", color: COLORES.texto },
   grabando: { backgroundColor: "#B91C1C", borderColor: "#B91C1C" },
   grabandoTexto: { color: "#FFFFFF" },
+  deshabilitado: { opacity: 0.6 },
   borrar: {
     width: 60,
     minHeight: 60,

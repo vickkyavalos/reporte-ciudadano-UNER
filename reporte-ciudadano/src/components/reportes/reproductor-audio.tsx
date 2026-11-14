@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Icon from "@react-native-vector-icons/ionicons";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -19,9 +19,18 @@ export function ReproductorAudio({ uri }: Props) {
   const estado = useAudioPlayerStatus(reproductor);
   const [modoAudio, setModoAudio] = useState<"cargando" | "listo" | "error">("cargando");
 
+  const prepararReproduccion = useCallback(async () => {
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      allowsRecording: false,
+      shouldRouteThroughEarpiece: false,
+      interruptionMode: "doNotMix",
+    });
+  }, []);
+
   useEffect(() => {
     let activo = true;
-    void setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false })
+    void prepararReproduccion()
       .then(() => {
         if (activo) setModoAudio("listo");
       })
@@ -31,17 +40,22 @@ export function ReproductorAudio({ uri }: Props) {
     return () => {
       activo = false;
     };
-  }, []);
+  }, [prepararReproduccion]);
 
-  const alternar = () => {
+  const alternar = async () => {
     if (estado.playing) {
       reproductor.pause();
       return;
     }
-    if (estado.didJustFinish || (estado.duration > 0 && estado.currentTime >= estado.duration)) {
-      void reproductor.seekTo(0);
+    try {
+      await prepararReproduccion();
+      if (estado.didJustFinish || (estado.duration > 0 && estado.currentTime >= estado.duration)) {
+        await reproductor.seekTo(0);
+      }
+      reproductor.play();
+    } catch {
+      setModoAudio("error");
     }
-    reproductor.play();
   };
 
   const error = modoAudio === "error"

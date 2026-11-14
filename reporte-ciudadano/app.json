@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "reporte-ciudadano",
+    "name": "Reporte Ciudadano",
     "slug": "reporte-ciudadano",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,14 +8,15 @@
     "scheme": "reporteciudadano",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.uner.reporteciudadano"
     },
     "android": {
+      "package": "com.uner.reporteciudadano",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1182F6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -28,9 +29,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 220
         }
       ],
       "expo-sqlite",
@@ -38,7 +39,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Usamos el micrófono para que puedas contar el problema con una nota de voz."
+          "microphonePermission": "Usamos el micrófono para que puedas contar el problema con una nota de voz.",
+          "enableBackgroundPlayback": false
         }
       ],
       [
@@ -64,6 +66,7 @@
         }
       ],
       "expo-asset",
+<<<<<<< HEAD
       "expo-notifications",
       [
         "react-native-maps",
@@ -72,10 +75,20 @@
           
         }
       ]
+=======
+      "expo-notifications"
+>>>>>>> 9243f108ec7aea96f68865f86122f6f4c3ced90f
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1b1589ba-569a-46c3-915c-6478a468d70b"
+      }
+    },
+    "owner": "proyectouner"
   }
 }

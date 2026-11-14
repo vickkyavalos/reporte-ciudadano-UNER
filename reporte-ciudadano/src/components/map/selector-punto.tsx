@@ -1,8 +1,10 @@
+import { hayInternet } from "@/servicios/red";
 import { useNetworkState } from "expo-network";
 import { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import { ORIGEN_MAPA, propsWebViewAcotada } from "./webview-acotada";
 import { COLORES } from "@/constants/estados";
 import type { Coordenadas } from "@/tipos/reporte.interface";
 
@@ -100,11 +102,9 @@ function MapaLeaflet({
 
   return (
     <WebView
-      originWhitelist={["*"]}
-      source={{ html, baseUrl: "https://localhost" }}
+      {...propsWebViewAcotada}
+      source={{ html, baseUrl: ORIGEN_MAPA }}
       onMessage={alRecibir}
-      javaScriptEnabled
-      domStorageEnabled
       scrollEnabled={false}
       onError={(e) => console.warn("Mapa: error del WebView", e.nativeEvent.description)}
       onHttpError={(e) => console.warn("Mapa: error HTTP", e.nativeEvent.statusCode, e.nativeEvent.url)}
@@ -133,7 +133,7 @@ export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
 
         <View style={[styles.ayuda, { top: margenes.top + 12 }]}>
           <Text style={styles.ayudaTexto}>
-            {red.isConnected === false
+            {!hayInternet(red)
               ? "Sin señal el mapa puede verse vacío, pero igual podés mover el pin."
               : "Arrastrá el pin o tocá el mapa donde está el problema."}
           </Text>

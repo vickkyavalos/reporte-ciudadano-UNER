@@ -1,3 +1,4 @@
+import { hayInternet } from "./red";
 import * as Network from "expo-network";
 import Storage from "expo-sqlite/kv-store";
 import { asignarZona } from "@/hooks/geo";
@@ -336,7 +337,7 @@ async function procesarCola(): Promise<void> {
   const usuario = obtenerUsuario();
   if (!usuario) return;
   const red = await Network.getNetworkStateAsync();
-  if (red.isConnected === false) return;
+  if (!hayInternet(red)) return;
 
   for (const entrada of await listarCola(usuario.id)) {
     try {

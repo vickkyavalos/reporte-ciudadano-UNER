@@ -1,3 +1,4 @@
+import { hayInternet } from "@/servicios/red";
 import * as Network from "expo-network";
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
@@ -19,8 +20,8 @@ export function useSincronizacionCola(activa: boolean) {
     };
 
     conSenal();
-    const red = Network.addNetworkStateListener(({ isConnected }) => {
-      if (isConnected) conSenal();
+    const red = Network.addNetworkStateListener((estado) => {
+      if (hayInternet(estado)) conSenal();
     });
     const app = AppState.addEventListener("change", (estado) => {
       if (estado === "active") sincronizar();
