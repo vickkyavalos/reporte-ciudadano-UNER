@@ -1,67 +1,85 @@
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { api } from './api';
 
-    Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    } as any),
-    });
+const CLAVE_TOKEN_PUSH = 'token_push';
 
-    export async function registrarParaNotificacionesPushAsync(): Promise<string | null> {
-    let token: string | null = null;
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
-    if (!Device.isDevice) {
-        console.warn('Las notificaciones push físicas no funcionan completamente en emuladores.');
-        return null;
-    }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+export async function registrarDispositivo(): Promise<string | null> {
+  if (Platform.OS === 'web' || !Device.isDevice) return null;
 
-    if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-        console.warn('El usuario denegó los permisos para las notificaciones.');
-        return null;
-    }
-
-    try {
-    
-        const tokenData = await Notifications.getExpoPushTokenAsync();
-        token = tokenData.data;
-    } catch (error) {
-        console.error('Error al obtener el push token:', error);
-    }
-
+  try {
+  
     if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-        name: 'Estado de Reclamos',
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Estado de reclamos',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
-        });
+      });
     }
 
-    return token;
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      ({ status } = await Notifications.requestPermissionsAsync());
+    }
+    if (status !== 'granted') return null;
+
+    const projectId =
+      Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) {
+      console.warn('[push] Falta el projectId de EAS: corré "npx eas-cli init".');
+      return null;
     }
 
-    export async function programarNotificacionLocal(
-    titulo: string, 
-    cuerpo: string, 
-    datosExtra?: Record<string, any>
-    ) {
-    await Notifications.scheduleNotificationAsync({
-        content: {
-        title: titulo,
-        body: cuerpo,
-        data: datosExtra || {},
-        },
-        trigger: null, 
+    const { data: tokenExpo } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await api.post('/dispositivos', {
+      tokenExpo,
+      plataforma: Platform.OS === 'ios' ? 'ios' : 'android',
     });
-    }
+    await SecureStore.setItemAsync(CLAVE_TOKEN_PUSH, tokenExpo);
+    return tokenExpo;
+  } catch (error) {
+    console.warn('[push] No se pudo registrar el teléfono', error);
+    return null;
+  }
+}
+
+export async function darDeBajaDispositivo(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const tokenExpo = await SecureStore.getItemAsync(CLAVE_TOKEN_PUSH);
+  if (!tokenExpo) return;
+  try {
+    await api.delete(`/dispositivos/${encodeURIComponent(tokenExpo)}`);
+  } catch {
+   
+  }
+  await SecureStore.deleteItemAsync(CLAVE_TOKEN_PUSH);
+}
+
+export async function programarNotificacionLocal(
+  titulo: string,
+  cuerpo: string,
+  datosExtra?: Record<string, unknown>,
+) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: titulo,
+      body: cuerpo,
+      data: datosExtra || {},
+    },
+    trigger: null, 
+  });
+}

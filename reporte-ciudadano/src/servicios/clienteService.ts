@@ -1,87 +1,93 @@
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+// import axios from 'axios';
+// import { Platform } from 'react-native';
+// import * as SecureStore from 'expo-secure-store';
 
-const BASE = process.env.EXPO_PUBLIC_API_URL;
+// const BASE = process.env.EXPO_PUBLIC_API_URL;
 
-export class ErrorApi extends Error {
-  mensaje: string;
-  constructor(public codigo: string, mensaje: string, public estado: number) {
-    super(mensaje);
-    this.mensaje = mensaje;
-  }
-}
+// const TIMEOUT_POR_DEFECTO_MS = 60000;
 
-let alExpirarSesion: (() => void) | null = null;
-export const onSesionExpirada = (fn: () => void) => {
-  alExpirarSesion = fn;
-};
+// export class ErrorApi extends Error {
+//   mensaje: string;
+//   constructor(public codigo: string, mensaje: string, public estado: number) {
+//     super(mensaje);
+//     this.mensaje = mensaje;
+//   }
+// }
 
-export const guardarToken = async (t: string) => {
-  if (Platform.OS === 'web') {
-    localStorage.setItem('token', t);
-    return;
-  }
-  await SecureStore.setItemAsync('token', t);
-};
+// let alExpirarSesion: (() => void) | null = null;
+// export const onSesionExpirada = (fn: () => void) => {
+//   alExpirarSesion = fn;
+// };
 
-export const obtenerToken = async (): Promise<string | null> => {
-  if (Platform.OS === 'web') {
-    return localStorage.getItem('token');
-  }
-  return SecureStore.getItemAsync('token');
-};
+// export const guardarToken = async (t: string) => {
+//   if (Platform.OS === 'web') {
+//     localStorage.setItem('token', t);
+//     return;
+//   }
+//   await SecureStore.setItemAsync('token', t);
+// };
 
-export const borrarToken = async () => {
-  if (Platform.OS === 'web') {
-    localStorage.removeItem('token');
-    return;
-  }
-  await SecureStore.deleteItemAsync('token');
-};
+// export const obtenerToken = async (): Promise<string | null> => {
+//   if (Platform.OS === 'web') {
+//     return localStorage.getItem('token');
+//   }
+//   return SecureStore.getItemAsync('token');
+// };
 
-type Opciones = { metodo?: string; cuerpo?: unknown; formData?: FormData; timeoutMs?: number };
+// export const borrarToken = async () => {
+//   if (Platform.OS === 'web') {
+//     localStorage.removeItem('token');
+//     return;
+//   }
+//   await SecureStore.deleteItemAsync('token');
+// };
 
-export async function pedir<T>(
-  ruta: string,
-  opciones: Opciones = {}
-): Promise<{ datos: T; meta: any }> {
-  if (!BASE) {
-    throw new ErrorApi('SIN_CONFIGURAR', 'Falta EXPO_PUBLIC_API_URL en el .env', 0);
-  }
+// export const api = axios.create({
+//   baseURL: BASE,
+//   timeout: TIMEOUT_POR_DEFECTO_MS,
+// });
 
-  const token = await obtenerToken();
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (opciones.cuerpo) headers['Content-Type'] = 'application/json';
+// api.interceptors.request.use(async (config) => {
+//   if (!BASE) {
+//     throw new ErrorApi('SIN_CONFIGURAR', 'Falta EXPO_PUBLIC_API_URL en el .env', 0);
+//   }
+//   const token = await obtenerToken();
+//   if (token) config.headers.Authorization = `Bearer ${token}`;
+//   return config;
+// });
 
-  const corte = new AbortController();
-  const temporizador = opciones.timeoutMs
-    ? setTimeout(() => corte.abort(), opciones.timeoutMs)
-    : null;
+// api.interceptors.response.use(
+//   (respuesta) => respuesta,
+//   (error) => {
+//     if (error instanceof ErrorApi) throw error;
 
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}${ruta}`, {
-      method: opciones.metodo ?? 'GET',
-      headers,
-      body: opciones.formData ?? (opciones.cuerpo ? JSON.stringify(opciones.cuerpo) : undefined),
-      signal: corte.signal,
-    });
-  } catch {
-    throw new ErrorApi('SIN_CONEXION', 'No hay conexión. Probá de nuevo.', 0);
-  } finally {
-    if (temporizador) clearTimeout(temporizador);
-  }
+//     if (axios.isAxiosError(error) && error.response) {
+//       const { status, data, config } = error.response;
+//       if (status === 401 && config.headers?.Authorization) alExpirarSesion?.();
+//       throw new ErrorApi(
+//         data?.error?.codigo ?? 'ERROR_INTERNO',
+//         data?.error?.mensaje ?? 'Algo salió mal.',
+//         status
+//       );
+//     }
 
-  const json = await res.json().catch(() => null);
+//     throw new ErrorApi('SIN_CONEXION', 'No hay conexión. Probá de nuevo.', 0);
+//   }
+// );
 
-  if (!res.ok) {
-    if (res.status === 401 && token) alExpirarSesion?.();
-    throw new ErrorApi(
-      json?.error?.codigo ?? 'ERROR_INTERNO',
-      json?.error?.mensaje ?? 'Algo salió mal.',
-      res.status
-    );
-  }
-  return json;
-}
+// type Opciones = { metodo?: string; cuerpo?: unknown; formData?: FormData; timeoutMs?: number };
+
+// export async function pedir<T>(
+//   ruta: string,
+//   opciones: Opciones = {}
+// ): Promise<{ datos: T; meta: any }> {
+//   const respuesta = await api.request<{ datos: T; meta: any }>({
+//     url: ruta,
+//     method: opciones.metodo ?? 'GET',
+//     data: opciones.formData ?? opciones.cuerpo,
+//     timeout: opciones.timeoutMs ?? TIMEOUT_POR_DEFECTO_MS,
+//   });
+//   return respuesta.data;
+// }
+
+export * from './api';

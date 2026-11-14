@@ -23,6 +23,7 @@ import type {
 } from "@/tipos/reporte.interface";
 import { EstadoBadge } from "@/components/ui/text-estado";
 import QRCode from 'react-native-qrcode-svg';
+import { ReproductorAudio } from "@/components/reportes/reproductor-audio";
 
 export default function DetalleReporte() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -137,23 +138,16 @@ export default function DetalleReporte() {
 
               {mostrarQR && (
                 <View style={styles.qrCaja}>
-                  {/*componente QR  */}
-                  {mostrarQR && (
-  <View style={styles.qrCaja}>
-    {/* Reemplaza el comentario por esto: */}
-    <QRCode
-      value={reporte.codigo}
-      size={150}
-      backgroundColor="white"
-      color="black"
-    />
-    
-    <Text style={styles.qrCodigo}>{reporte.codigo}</Text>
-    <Text style={styles.qrAyuda}>
-      Mostrá este código en el mostrador.
-    </Text>
-  </View>
-)}
+                  <QRCode
+                    value={reporte.codigo}
+                    size={150}
+                    backgroundColor="white"
+                    color="black"
+                  />
+                  <Text style={styles.qrCodigo}>{reporte.codigo}</Text>
+                  <Text style={styles.qrAyuda}>
+                    Mostrá este código en el mostrador.
+                  </Text>
                 </View>
               )}
             </View>
@@ -212,8 +206,18 @@ export default function DetalleReporte() {
 
           <Text style={styles.etiqueta}>Descripción</Text>
           <Text style={styles.texto}>
-            {reporte.descripcion?.trim() || "Sin descripción disponible."}
+            {reporte.descripcion?.trim() ||
+              (reporte.audioUrl
+                ? "Sin descripción escrita."
+                : "Sin descripción disponible.")}
           </Text>
+
+          {reporte.audioUrl && (
+            <View style={styles.bloque}>
+              <Text style={styles.etiqueta}>Nota de voz</Text>
+              <ReproductorAudio uri={reporte.audioUrl} />
+            </View>
+          )}
 
           <Text style={styles.etiqueta}>Dirección</Text>
           <Text style={styles.texto}>{reporte.direccion}</Text>
@@ -322,7 +326,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // --- Bloques por rol ---
+  //Bloques por rol 
   bloque: {
     marginBottom: 18,
     gap: 10,
