@@ -26,6 +26,8 @@ import type {
   DetalleReclamoOperador,
 } from "@/tipos/detalleOperador.interface";
 import type { EstadoReporte } from "@/tipos/reporte.interface";
+import { ReproductorAudio } from "@/components/reportes/reproductor-audio";
+
 
 const estados: EstadoReporte[] = [
   "recibido",
@@ -379,6 +381,33 @@ export default function DetalleOperadorScreen() {
               <Text style={styles.description}>{detalle.descripcion}</Text>
             </>
           )}
+
+            {detalle.descripcion && (
+            <>
+              <Text style={styles.fieldLabel}>Descripción del vecino</Text>
+              <Text style={styles.description}>{detalle.descripcion}</Text>
+            </>
+          )}
+
+          {detalle.audioUrl && (
+            <>
+              <Text style={styles.fieldLabel}>Nota de voz del vecino</Text>
+              <ReproductorAudio uri={detalle.audioUrl} />
+            </>
+          )}
+
+          {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
+
+
+
+
+
+
+
+
+
+
+
           {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
         </View>
       </ScrollView>
