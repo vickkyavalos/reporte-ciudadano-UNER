@@ -11,7 +11,7 @@ export interface DetalleReclamoOperador extends ReclamoOperador {
   fotosArreglo?: string[];
   duplicadoDe: string | null;
   historial: CambioDeEstado[];
-  audioUrl: string | null;
+  audioUrl?: string | null;
 }
 
 export type CambiosDetalleOperador = Omit<CambiosOperadorReporte, "fotoArreglo"> & {
