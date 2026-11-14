@@ -84,7 +84,7 @@ export function MapaReportes({ centro, reportes, tipos, seleccionadoId, onSelecc
   const webRef = useRef<WebView>(null);
   const listo = useRef(false);
 
-  const html = useMemo(() => crearHtml(centro), []); 
+  const html = useMemo(() => crearHtml(centro), [centro]);
 
   const enviarDatos = () => {
     if (!listo.current) return;
