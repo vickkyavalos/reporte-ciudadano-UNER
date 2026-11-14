@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Icon from "@react-native-vector-icons/ionicons";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -8,6 +8,7 @@ import { COLORES } from "@/constants/estados";
 interface Props {
   uri: string;
 }
+
 const tiempo = (segundos: number) => {
   const total = Math.max(0, Math.floor(segundos));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -16,11 +17,20 @@ const tiempo = (segundos: number) => {
 export function ReproductorAudio({ uri }: Props) {
   const reproductor = useAudioPlayer({ uri });
   const estado = useAudioPlayerStatus(reproductor);
+  const [modoAudio, setModoAudio] = useState<"cargando" | "listo" | "error">("cargando");
 
   useEffect(() => {
-    void setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(
-      () => undefined,
-    );
+    let activo = true;
+    void setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false })
+      .then(() => {
+        if (activo) setModoAudio("listo");
+      })
+      .catch(() => {
+        if (activo) setModoAudio("error");
+      });
+    return () => {
+      activo = false;
+    };
   }, []);
 
   const alternar = () => {
@@ -34,32 +44,42 @@ export function ReproductorAudio({ uri }: Props) {
     reproductor.play();
   };
 
-  const texto = !estado.isLoaded
-    ? "Cargando audio..."
-    : estado.playing
-      ? `Pausar (${tiempo(estado.currentTime)} / ${tiempo(estado.duration)})`
-      : `Escuchar nota de voz${estado.duration > 0 ? ` (${tiempo(estado.duration)})` : ""}`;
+  const error = modoAudio === "error"
+    ? "No se pudo preparar el audio."
+    : estado.error
+      ? "No se pudo cargar la nota de voz."
+      : null;
+  const texto = error
+    ? "Audio no disponible"
+    : modoAudio !== "listo" || !estado.isLoaded
+      ? "Cargando audio..."
+      : estado.playing
+        ? `Pausar (${tiempo(estado.currentTime)} / ${tiempo(estado.duration)})`
+        : `Escuchar nota de voz${estado.duration > 0 ? ` (${tiempo(estado.duration)})` : ""}`;
 
   return (
     <View style={styles.fila}>
       <Pressable
-        style={[styles.boton, !estado.isLoaded && styles.deshabilitado]}
+        style={[
+          styles.boton,
+          (modoAudio !== "listo" || !estado.isLoaded) && styles.deshabilitado,
+        ]}
         onPress={alternar}
-        disabled={!estado.isLoaded}
+        disabled={modoAudio !== "listo" || !estado.isLoaded}
         accessibilityRole="button"
         accessibilityLabel={estado.playing ? "Pausar la nota de voz" : "Escuchar la nota de voz"}
       >
         <Icon name={estado.playing ? "pause" : "play"} size={28} color={COLORES.texto} />
         <Text style={styles.texto}>{texto}</Text>
       </Pressable>
+      {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fila: { flexDirection: "row" },
+  fila: { gap: 8 },
   boton: {
-    flex: 1,
     minHeight: 60,
     flexDirection: "row",
     alignItems: "center",
@@ -73,4 +93,5 @@ const styles = StyleSheet.create({
   },
   texto: { fontSize: 18, fontWeight: "600", color: COLORES.texto },
   deshabilitado: { opacity: 0.6 },
+  error: { fontSize: 14, color: "#B42318" },
 });

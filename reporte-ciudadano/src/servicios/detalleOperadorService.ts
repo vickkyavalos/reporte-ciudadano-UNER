@@ -110,6 +110,7 @@ function desdeReporte(
       reporte.fotos.find((foto) => foto.momento === "problema")?.url ?? null,
     fotoArreglo: fotosArreglo[0] ?? null,
     fotosArreglo,
+    audioUrl: reporte.audioUrl,
     duplicadoDe: reporte.duplicadoDe,
     historial,
   };

@@ -31,6 +31,7 @@ const mapaNativoDisponible =
       Boolean((plugin[1] as { androidGoogleMapsApiKey?: string } | undefined)?.androidGoogleMapsApiKey),
   );
 
+
 const crearHtml = (punto: Coordenadas, interactivo: boolean) => `
 <!DOCTYPE html>
 <html>
@@ -42,35 +43,51 @@ const crearHtml = (punto: Coordenadas, interactivo: boolean) => `
     html, body, #map { height: 100%; margin: 0; background: #e5e5e5; }
     .pin { width: 26px; height: 26px; border-radius: 50%; background: #C1440E;
            border: 4px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.5); box-sizing: border-box; }
+    #estado { position: absolute; z-index: 1000; left: 8px; right: 8px; bottom: 8px;
+              padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.94);
+              font: 14px sans-serif; color: #222; display: block; }
   </style>
 </head>
 <body>
 <div id="map"></div>
+<div id="estado">Cargando mapa...</div>
 <script>
-  const interactivo = ${interactivo};
-  const map = L.map('map', {
-    zoomControl: interactivo,
-    dragging: interactivo,
-    touchZoom: interactivo,
-    doubleClickZoom: interactivo,
-    scrollWheelZoom: interactivo,
-    boxZoom: false,
-    keyboard: false,
-    attributionControl: false
-  }).setView([${punto.latitud}, ${punto.longitud}], 17);
+  const estado = document.getElementById('estado');
+  function mostrar(t) { estado.textContent = t; estado.style.display = 'block'; }
+  function ocultar() { estado.style.display = 'none'; }
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  if (typeof L === 'undefined') {
+    mostrar('No se pudo cargar el mapa. Revisá la conexión a internet.');
+  } else {
+    const interactivo = ${interactivo};
+    const map = L.map('map', {
+      zoomControl: interactivo,
+      dragging: interactivo,
+      touchZoom: interactivo,
+      doubleClickZoom: interactivo,
+      scrollWheelZoom: interactivo,
+      boxZoom: false,
+      keyboard: false,
+      attributionControl: false
+    }).setView([${punto.latitud}, ${punto.longitud}], 17);
 
-  const icono = L.divIcon({ className: '', html: '<div class="pin"></div>', iconSize: [26, 26], iconAnchor: [13, 13] });
-  const marcador = L.marker([${punto.latitud}, ${punto.longitud}], { icon: icono, draggable: interactivo }).addTo(map);
+    const capa = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    capa.on('tileload', ocultar);
+    capa.on('tileerror', function () {
+      mostrar('No se cargó el fondo del mapa. Revisá la conexión; igual podés mover el pin.');
+    });
 
-  function avisar() {
-    const p = marcador.getLatLng();
-    window.ReactNativeWebView.postMessage(JSON.stringify({ latitud: p.lat, longitud: p.lng }));
-  }
-  if (interactivo) {
-    marcador.on('dragend', avisar);
-    map.on('click', function (e) { marcador.setLatLng(e.latlng); avisar(); });
+    const icono = L.divIcon({ className: '', html: '<div class="pin"></div>', iconSize: [26, 26], iconAnchor: [13, 13] });
+    const marcador = L.marker([${punto.latitud}, ${punto.longitud}], { icon: icono, draggable: interactivo }).addTo(map);
+
+    function avisar() {
+      const p = marcador.getLatLng();
+      window.ReactNativeWebView.postMessage(JSON.stringify({ latitud: p.lat, longitud: p.lng }));
+    }
+    if (interactivo) {
+      marcador.on('dragend', avisar);
+      map.on('click', function (e) { marcador.setLatLng(e.latlng); avisar(); });
+    }
   }
 </script>
 </body>
@@ -97,7 +114,7 @@ function MapaLeaflet({
         onPunto?.({ latitud, longitud });
       }
     } catch {
-
+    
     }
   };
 
@@ -109,6 +126,8 @@ function MapaLeaflet({
       javaScriptEnabled
       domStorageEnabled
       scrollEnabled={false}
+      onError={(e) => console.warn("Mapa: error del WebView", e.nativeEvent.description)}
+      onHttpError={(e) => console.warn("Mapa: error HTTP", e.nativeEvent.statusCode, e.nativeEvent.url)}
       style={styles.mapa}
     />
   );
@@ -139,6 +158,7 @@ export function VistaPunto({ punto }: { punto: Coordenadas }) {
     </View>
   );
 }
+
 
 export function SelectorPunto({ inicial, onConfirmar, onCerrar }: Props) {
   const [punto, setPunto] = useState(inicial);
