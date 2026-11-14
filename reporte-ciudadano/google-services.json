@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1017339263671",
+    "project_id": "uner-reporteciudadano",
+    "storage_bucket": "uner-reporteciudadano.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1017339263671:android:dafbc9ac527cc074a1eb32",
+        "android_client_info": {
+          "package_name": "com.uner.reporteciudadano"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOMLu5s_WSqcDEOUkPolV8VUIAgRG5MHk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
