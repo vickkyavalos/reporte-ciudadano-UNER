@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import { ORIGEN_MAPA, propsWebViewAcotada } from "./webview-acotada";
 import { ESTADOS } from "@/constants/estados";
 import type { Coordenadas, Reporte, TipoDeReporte } from "@/tipos/reporte.interface";
 import { haceCuanto } from "@/utils/formato";
@@ -116,15 +117,13 @@ export function MapaReportes({ centro, reportes, tipos, seleccionadoId, onSelecc
     <View style={StyleSheet.absoluteFill}>
       <WebView
         ref={webRef}
-        originWhitelist={["*"]}
-        source={{ html, baseUrl: "https://localhost" }}
+        {...propsWebViewAcotada}
+        source={{ html, baseUrl: ORIGEN_MAPA }}
         onMessage={onMessage}
         onLoadEnd={() => {
           listo.current = true;
           enviarDatos();
         }}
-        javaScriptEnabled
-        domStorageEnabled
       />
     </View>
   );

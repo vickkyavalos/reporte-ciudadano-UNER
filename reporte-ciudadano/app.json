@@ -14,10 +14,9 @@
       "package": "com.uner.reporteciudadano",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#C1440E",
+        "backgroundColor": "#1182F6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -30,9 +29,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#C1440E",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 160
+          "imageWidth": 220
         }
       ],
       "expo-sqlite",
