@@ -1,6 +1,3 @@
-// Dobles de prueba de las notificaciones (AGENTS §19.2): dos en memoria para los tests de
-// dominio (qué decidió Avisos) y un servidor HTTP que se hace pasar por Expo para los de la
-// consigna de los alumnos (qué llegó a Expo).
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Plataforma } from '../../contract/api.js';
@@ -10,7 +7,6 @@ import type {
   MensajePush,
 } from '../../src/common/notifications/ports.js';
 
-/** Una push que "se mandó", de a un token (como las ve cada teléfono). */
 export interface PushEnviada {
   tokenExpo: string;
   titulo: string;
@@ -18,12 +14,9 @@ export interface PushEnviada {
   datos: Record<string, string>;
 }
 
-/** Lo que los tests de dominio miran: qué se mandó y a quién. */
 export interface NotificadorDePrueba {
   readonly enviadas: PushEnviada[];
-  /** Los próximos envíos a ese token vuelven como "dispositivo dado de baja". */
   marcarInvalido(tokenExpo: string): void;
-  /** El próximo envío falla (el proveedor está caído). */
   fallarProximoEnvio(): void;
   limpiar(): void;
 }
@@ -101,10 +94,8 @@ interface MensajeExpo {
   data: Record<string, string>;
 }
 
-/** Servidor que imita POST /--/api/v2/push/send de Expo: un ticket por mensaje, en orden. */
 export class ExpoFalso implements NotificadorDePrueba {
   readonly enviadas: PushEnviada[] = [];
-  /** Cada pedido que llegó, tal cual (para mirar la forma y las tandas). */
   readonly pedidos: MensajeExpo[][] = [];
   private readonly invalidos = new Set<string>();
   private fallar = false;
